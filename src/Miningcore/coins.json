@@ -5642,6 +5642,24 @@
         "explorerAccountLink": "https://explorer.hypra.network/address/{0}",
         "ethasher": "ethashb3"
     },
+    "parallax": {
+        "name": "Parallax",
+        "canonicalName": "Parallax",
+        "symbol": "LAX",
+        "family": "parallax",
+        "website": "https://parallaxprotocol.org/",
+        "github": "https://github.com/ParallaxProtocol/parallax",
+        "market": "",
+        "twitter": "",
+        "telegram": "",
+        "discord": "",
+        "explorerBlockLinks": {
+            "block": "https://explorer.parallaxprotocol.org/block/$height$"
+        },
+        "explorerTxLink": "https://explorer.parallaxprotocol.org/tx/{0}",
+        "explorerAccountLink": "https://explorer.parallaxprotocol.org/address/{0}",
+        "ethasher": "xhash"
+    },
     "ubiq": {
         "name": "Ubiq",
         "canonicalName": "Ubiq",

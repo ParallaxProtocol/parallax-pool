@@ -49,6 +49,9 @@ public enum CoinFamily
     [EnumMember(Value = "nexa")]
     Nexa,
 
+    [EnumMember(Value = "parallax")]
+    Parallax,
+
     [EnumMember(Value = "progpow")]
     Progpow,
 
@@ -176,6 +179,7 @@ public abstract partial class CoinTemplate
         {CoinFamily.Handshake, typeof(BitcoinTemplate)},
         {CoinFamily.Kaspa, typeof(KaspaCoinTemplate)},
         {CoinFamily.Nexa, typeof(BitcoinTemplate)},
+        {CoinFamily.Parallax, typeof(ParallaxCoinTemplate)},
         {CoinFamily.Progpow, typeof(ProgpowCoinTemplate)},
         {CoinFamily.Satoshicash, typeof(BitcoinTemplate)},
         {CoinFamily.Warthog, typeof(WarthogCoinTemplate)},
@@ -716,6 +720,16 @@ public partial class EthereumCoinTemplate : CoinTemplate
     /// Which hashing algorithm to use. (ethash, etchash, ubqhash or ethashb3)
     /// </summary>
     public string Ethasher { get; set; } = "ethash";
+}
+
+/// <summary>
+/// Parallax (LAX) - a geth-derived chain using the XHash PoW algorithm
+/// (ethasher "xhash"). Inherits the Ethereum template plumbing (rpcMethodPrefix,
+/// ethasher-based hasher resolution) but forms its own coin family with
+/// dedicated pool/payout handling under Blockchain/Parallax.
+/// </summary>
+public partial class ParallaxCoinTemplate : EthereumCoinTemplate
+{
 }
 
 public partial class KaspaCoinTemplate : CoinTemplate

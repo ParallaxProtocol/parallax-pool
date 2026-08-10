@@ -385,7 +385,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var statsResult = await cf.RunTx((con, tx) =>
@@ -444,7 +444,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var blockStates = state is { Length: > 0 } ?
@@ -488,7 +488,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var blockStates = state is { Length: > 0 } ?
@@ -536,7 +536,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
@@ -572,7 +572,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
         
         uint itemCount = await cf.Run(con => paymentsRepo.GetPaymentsCountAsync(con, poolId, address, ct));
@@ -612,7 +612,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var balanceChanges = (await cf.Run(con => paymentsRepo.PageBalanceChangesAsync(
@@ -633,7 +633,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
         
         uint itemCount = await cf.Run(con => paymentsRepo.GetBalanceChangesCountAsync(con, poolId, address));
@@ -658,7 +658,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var earnings = (await cf.Run(con => paymentsRepo.PageMinerPaymentsByDayAsync(
@@ -678,7 +678,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         uint itemCount = await cf.Run(con => paymentsRepo.GetMinerPaymentsByDayCountAsync(con, poolId, address));
@@ -702,7 +702,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var result = await GetMinerPerformanceInternal(mode, pool, address, ct);
@@ -718,7 +718,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         var result = await cf.Run(con => minerRepo.GetSettingsAsync(con, null, pool.Id, address));
@@ -738,7 +738,7 @@ public class PoolApiController : ApiControllerBase
         if(string.IsNullOrEmpty(address))
             throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
 
-        if(pool.Template.Family == CoinFamily.Ethereum)
+        if(pool.Template.Family is CoinFamily.Ethereum or CoinFamily.Parallax)
             address = address.ToLower();
 
         if(request?.Settings == null)
