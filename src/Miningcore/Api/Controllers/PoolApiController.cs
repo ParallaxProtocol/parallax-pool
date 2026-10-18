@@ -269,7 +269,7 @@ public class PoolApiController : ApiControllerBase
             new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
             
         uint itemCount = await cf.Run(con => blocksRepo.GetPoolBlockCountAsync(con, poolId, ct));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var blocks = (await cf.Run(con => blocksRepo.PageBlocksAsync(con, pool.Id, blockStates, page, pageSize, ct)))
             .Select(x => x.ToApi())
@@ -337,7 +337,7 @@ public class PoolApiController : ApiControllerBase
         var ct = HttpContext.RequestAborted;
 
         uint itemCount = await cf.Run(con => paymentsRepo.GetPaymentsCountAsync(con, poolId, null, ct));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, null, page, pageSize, ct)))
@@ -480,7 +480,7 @@ public class PoolApiController : ApiControllerBase
             new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
         
         uint itemCount = await cf.Run(con => blocksRepo.GetMinerBlockCountAsync(con, poolId, address, ct));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var blocks = (await cf.Run(con => blocksRepo.PageMinerBlocksAsync(con, pool.Id, address, blockStates, page, pageSize, ct)))
             .Select(x => x.ToApi())
@@ -560,7 +560,7 @@ public class PoolApiController : ApiControllerBase
             address = address.ToLower();
         
         uint itemCount = await cf.Run(con => paymentsRepo.GetPaymentsCountAsync(con, poolId, address, ct));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, address, page, pageSize, ct)))
@@ -621,7 +621,7 @@ public class PoolApiController : ApiControllerBase
             address = address.ToLower();
         
         uint itemCount = await cf.Run(con => paymentsRepo.GetBalanceChangesCountAsync(con, poolId, address));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var balanceChanges = (await cf.Run(con => paymentsRepo.PageBalanceChangesAsync(
                 con, pool.Id, address, page, pageSize, ct)))
@@ -666,7 +666,7 @@ public class PoolApiController : ApiControllerBase
             address = address.ToLower();
 
         uint itemCount = await cf.Run(con => paymentsRepo.GetMinerPaymentsByDayCountAsync(con, poolId, address));
-        uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
+        uint pageCount = (uint) Math.Ceiling(itemCount / (double) pageSize);
 
         var earnings = (await cf.Run(con => paymentsRepo.PageMinerPaymentsByDayAsync(
                 con, pool.Id, address, page, pageSize, ct)))
