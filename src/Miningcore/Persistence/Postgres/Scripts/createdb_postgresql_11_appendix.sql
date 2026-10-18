@@ -1,5 +1,3 @@
-SET ROLE miningcore;
-
 DROP TABLE shares;
 
 CREATE TABLE shares

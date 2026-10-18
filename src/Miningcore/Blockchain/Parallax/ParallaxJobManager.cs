@@ -258,7 +258,14 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
             var latestBlockTimestamp = blockInfo.Timestamp;
             var latestBlockDifficulty = blockInfo.Difficulty.IntegralFromHex<ulong>();
 
-            var sampleSize = (ulong) 300;
+            BlockchainStats.ConnectedPeers = peerCount;
+
+            // young chains (fresh testnets) have fewer blocks than the sample window
+            var sampleSize = Math.Min((ulong) 300, latestBlockHeight);
+
+            if(sampleSize == 0)
+                return;
+
             var sampleBlockNumber = latestBlockHeight - sampleSize;
             var sampleBlockResults = await rpc.ExecuteAsync<Block>(logger, coin.RpcMethodPrefix + EC.GetBlockByNumber, ct, new[] { (object) sampleBlockNumber.ToStringHexWithPrefix(), true });
             var sampleBlockTimestamp = sampleBlockResults.Response.Timestamp;
@@ -267,7 +274,6 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
             var networkHashrate = latestBlockDifficulty / blockTime;
 
             BlockchainStats.NetworkHashrate = blockTime > 0 ? networkHashrate : 0;
-            BlockchainStats.ConnectedPeers = peerCount;
         }
 
         catch(Exception e)

@@ -1,5 +1,3 @@
-SET ROLE miningcore;
-
 CREATE TABLE shares
 (
 	poolid TEXT NOT NULL,
