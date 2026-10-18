@@ -8,6 +8,7 @@ import { ADDRESS_KEY, ConnectPage } from "./pages/Connect";
 import { BlocksPage, PaymentsPage } from "./pages/Lists";
 import { MinerPage } from "./pages/Miner";
 import { Overview } from "./pages/Overview";
+import { SettingsPage, SetupPage, StartingPage } from "./pages/Setup";
 
 export function App() {
   return (
@@ -21,7 +22,7 @@ export function App() {
 
 function Shell() {
   const path = usePath();
-  const { pool, error, loading } = usePool();
+  const { pool, setup, error, loading } = usePool();
   const live = useLiveConnection();
   const toast = useToast();
 
@@ -47,14 +48,21 @@ function Shell() {
   });
 
   useEffect(() => {
-    const titles: Record<string, string> = { "/blocks": "Blocks", "/payments": "Payments", "/connect": "Connect" };
+    const titles: Record<string, string> = { "/blocks": "Blocks", "/payments": "Payments", "/connect": "Connect", "/settings": "Settings" };
     const page = path.startsWith("/miners/") ? `Miner ${shortAddress(path.slice(8))}` : titles[path];
     document.title = page ? `${page} | Parallax Pool` : "Parallax Pool";
   }, [path]);
 
+  const setupPending = !!setup?.enabled && !setup.configured;
   let content;
 
-  if(!pool) {
+  if(setupPending)
+    content = <SetupPage />;
+  else if(path === "/settings" && setup?.enabled)
+    content = <SettingsPage setup={setup} />;
+  else if(pool && pool.status !== "online" && path !== "/connect")
+    content = <StartingPage pool={pool} />;
+  else if(!pool) {
     content = error
       ? <ErrorNotice error={error} what="the pool" />
       : <p className="muted">{loading ? "Loading…" : "This pool has no enabled pools configured."}</p>;
@@ -79,6 +87,9 @@ function Shell() {
 
   const nav = [["/", "Overview"], ["/blocks", "Blocks"], ["/payments", "Payments"], ["/connect", "Connect"]];
 
+  if(setup?.enabled && setup.configured)
+    nav.push(["/settings", "Settings"]);
+
   return (
     <div className="shell">
       <header className="header">
@@ -87,18 +98,22 @@ function Shell() {
             <img src="/logo.svg" alt="" />
             Parallax Pool
           </Link>
-          {pool && (
+          {pool?.status === "online" && (
             <span className="network" title={live ? "Live updates connected" : "Live updates disconnected, refreshing periodically"}>
               <span className="live-dot" data-live={live} />
               {pool.networkStats.networkType}
             </span>
           )}
-          <nav className="nav" aria-label="Main">
-            {nav.map(([href, label]) => (
-              <Link key={href} href={href} aria-current={path === href ? "page" : undefined}>{label}</Link>
-            ))}
-          </nav>
-          <Lookup />
+          {!setupPending && (
+            <>
+              <nav className="nav" aria-label="Main">
+                {nav.map(([href, label]) => (
+                  <Link key={href} href={href} aria-current={path === href ? "page" : undefined}>{label}</Link>
+                ))}
+              </nav>
+              <Lookup />
+            </>
+          )}
         </div>
       </header>
 

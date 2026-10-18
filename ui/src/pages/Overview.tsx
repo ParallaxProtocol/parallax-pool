@@ -76,7 +76,9 @@ export function Overview({ pool }: { pool: PoolInfo }) {
           <Link href="/blocks">All blocks</Link>
         </div>
         <BlocksTable blocks={(blocks.data ?? []).slice(0, 8)} tip={networkStats.blockHeight - 1}
-          empty="No blocks yet. Each block is a lottery ticket: at the current hashrate, expect the first one in about this long."
+          empty={isFinite(expectedSeconds)
+            ? "No blocks yet. Each block is a lottery ticket: at the current hashrate, expect the first one in about this long."
+            : "No blocks yet. Once miners are connected, this shows how long the first one should take."}
           expected={expectedSeconds} />
       </section>
 

@@ -45,6 +45,8 @@ export interface NetworkStats {
   blockHeight: number;
   connectedPeers: number;
   nodeVersion: string;
+  /** 0..1 while the node is still downloading the chain */
+  syncProgress?: number | null;
 }
 
 export interface MinerPerformance {
@@ -53,7 +55,10 @@ export interface MinerPerformance {
   sharesPerSecond: number;
 }
 
+export type PoolStatus = "starting" | "syncing" | "online";
+
 export interface PoolInfo {
+  status: PoolStatus;
   id: string;
   coin: CoinConfig;
   ports: Record<string, PoolEndpoint>;
@@ -146,6 +151,14 @@ export type PoolEvent =
   | { type: "payment"; poolId: string; amount: number; recipientsCount: number; error?: string | null }
   | { type: "hashrateupdated"; poolId: string; hashrate: number; miner?: string | null; worker?: string | null };
 
+/** First-run setup (only enabled where the deployment protects the UI, e.g. umbrelOS) */
+export interface SetupStatus {
+  enabled: boolean;
+  configured: boolean;
+  address?: string | null;
+  previousAddresses: string[];
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -173,3 +186,17 @@ export const BLOCK_TIME = 600;
 
 /** Stratum difficulty 1.0 corresponds to 2^32 hashes */
 export const DIFF1 = 2 ** 32;
+
+export async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  // the API answers errors with a plain-text message
+  if(!response.ok)
+    throw new ApiError(response.status, (await response.text()) || `${path} answered ${response.status}`);
+
+  return response.json() as Promise<T>;
+}
