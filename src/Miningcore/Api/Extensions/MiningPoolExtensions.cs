@@ -23,6 +23,23 @@ public static class MiningPoolExtensions
         // pool fees
         poolInfo.PoolFeePercent = poolConfig.RewardRecipients != null ? (float) poolConfig.RewardRecipients.Sum(x => x.Percentage) : 0;
 
+        // payout scheme parameters (optional in the config, e.g. SOLO has none)
+        if(poolInfo.PaymentProcessing != null)
+        {
+            var payoutSchemeConfig = poolConfig.PaymentProcessing.PayoutSchemeConfig?.ToObject<ApiPoolPayoutSchemeConfig>() ?? new ApiPoolPayoutSchemeConfig();
+
+            var scheme = poolConfig.PaymentProcessing.PayoutScheme;
+
+            // only show the parameters the configured scheme actually uses
+            if(scheme is not (PayoutScheme.PPLNS or PayoutScheme.PPLNSBF))
+                payoutSchemeConfig.Factor = null;
+
+            if(scheme != PayoutScheme.PPLNSBF)
+                payoutSchemeConfig.BlockFinderPercentage = null;
+
+            poolInfo.PaymentProcessing.PayoutSchemeConfig = payoutSchemeConfig;
+        }
+
         // strip security critical stuff
         if(poolInfo.Ports != null)
         {

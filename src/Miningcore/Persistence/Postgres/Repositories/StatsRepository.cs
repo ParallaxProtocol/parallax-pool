@@ -71,7 +71,7 @@ public class StatsRepository : IStatsRepository
 
         var query = @$"SELECT date_trunc('{trunc}', created) AS created,
             AVG(poolhashrate) AS poolhashrate, AVG(networkhashrate) AS networkhashrate, AVG(networkdifficulty) AS networkdifficulty,
-            CAST(AVG(connectedminers) AS BIGINT) AS connectedminers
+            CAST(AVG(connectedminers) AS BIGINT) AS connectedminers, AVG(sharespersecond) AS sharespersecond
             FROM poolstats
             WHERE poolid = @poolId AND created >= @start AND created <= @end
             GROUP BY date_trunc('{trunc}', created)

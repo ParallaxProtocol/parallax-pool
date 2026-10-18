@@ -108,11 +108,11 @@ public static partial class ModelMapper
     [MapperIgnoreTarget(nameof(Dto.PoolInfo.PoolEffort))]
     public static partial Dto.PoolInfo ToApi(this PoolConfig pool);
 
-    // the payout scheme config is converted from its raw JSON by the API controller
+    // the payout scheme config is converted from its raw JSON by MiningPoolExtensions.ToPoolInfo
     [MapperIgnoreTarget(nameof(Dto.ApiPoolPaymentProcessingConfig.PayoutSchemeConfig))]
     private static partial Dto.ApiPoolPaymentProcessingConfig ToApi(PoolPaymentProcessingConfig config);
 
-    [MapperIgnoreTarget(nameof(Dto.AggregatedPoolStats.ValidSharesPerSecond))]
+    [MapProperty(nameof(PoolStats.SharesPerSecond), nameof(Dto.AggregatedPoolStats.ValidSharesPerSecond))]
     public static partial Dto.AggregatedPoolStats ToApi(this PoolStats stats);
 
     [MapperIgnoreTarget(nameof(Dto.Block.InfoLink))]
