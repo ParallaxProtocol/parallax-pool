@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # GitVersion needs the history
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        # builds libxhash natively, so the XHash test vectors run on both architectures
+        run: dotnet test src/Miningcore.Tests -c Release --logger "console;verbosity=normal"
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: parallax-pool:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm parallax-pool:ci ./parallax-pool --version
+          docker run --rm -e POOL_ADDRESS=0x0000000000000000000000000000000000000001 -e DB_PASSWORD=x \
+            parallax-pool:ci ./parallax-pool -dc | grep -q '"directRewards": true'

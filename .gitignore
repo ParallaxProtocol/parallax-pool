@@ -213,3 +213,6 @@ fabric.properties
 /*/*/*/*/*/*/*/*/*.o
 /*/*/*/*/*/*/*/*/*/*.o
 /*/*/*/*/*/*/*/*/*/*.o
+
+# docker compose settings (contain passwords)
+.env

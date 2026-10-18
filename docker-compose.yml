@@ -1,0 +1,73 @@
+# Parallax node + PostgreSQL + Parallax Pool.
+#
+#   cp .env.example .env    # set POOL_ADDRESS and DB_PASSWORD
+#   docker compose up -d
+#
+# Miners connect to stratum+tcp://<this-host>:4073, the API is on http://<this-host>:4000.
+# The node's RPC and the database are only reachable from inside this compose project.
+
+name: parallax-pool
+
+services:
+  node:
+    image: parallaxprotocol/parallax:${NODE_VERSION:-2.1.5}
+    restart: unless-stopped
+    entrypoint: ["sh", "-c"]
+    # work is only served to the pool (--miner.threads 0), rewards go to POOL_ADDRESS.
+    # NODE_EXTRA_ARGS is for PAYOUT_MODE=pool, where the node has to unlock POOL_ADDRESS (see README)
+    command:
+      - >-
+        exec parallaxd
+        --cache ${NODE_CACHE:-1024}
+        --http --http.addr 0.0.0.0 --http.vhosts '*' --http.api eth,net,web3
+        --ws --ws.addr 0.0.0.0 --ws.origins '*' --ws.api eth,net,web3
+        --mine --miner.threads 0 --miner.coinbase ${POOL_ADDRESS:?set POOL_ADDRESS in .env}
+        ${NODE_EXTRA_ARGS:-}
+    ports:
+      - "${NODE_P2P_PORT:-32110}:32110/tcp"
+      - "${NODE_P2P_PORT:-32110}:32110/udp"
+    volumes:
+      - node-data:/home/parallax/.parallax
+    stop_grace_period: 2m
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-pool}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:-pool}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  pool:
+    image: ${POOL_IMAGE:-parallaxprotocol/parallax-pool:latest}
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_HOST: node
+      NODE_RPC_PORT: 8545
+      NODE_WS_PORT: 8546
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "${API_PORT:-4000}:${API_PORT:-4000}"
+      - "${STRATUM_PORT:-4073}:${STRATUM_PORT:-4073}"
+    volumes:
+      - pool-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      node:
+        condition: service_started
+
+volumes:
+  node-data:
+  db-data:
+  pool-data:
