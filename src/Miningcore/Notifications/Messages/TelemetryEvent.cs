@@ -8,11 +8,6 @@ public enum TelemetryCategory
     Share = 1,
 
     /// <summary>
-    /// Blocktemplate over BTStream received
-    /// </summary>
-    BtStream,
-
-    /// <summary>
     /// JsonRPC Request to Daemon
     /// </summary>
     RpcRequest,

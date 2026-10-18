@@ -25,19 +25,7 @@ using Miningcore.Api.Controllers;
 using Miningcore.Api.Middlewares;
 using Miningcore.Api.Responses;
 using Miningcore.Configuration;
-using Miningcore.Crypto.Hashing.Algorithms;
-using Miningcore.Crypto.Hashing.Equihash;
-using Miningcore.Crypto.Hashing.Ethash.Etchash;
-using Miningcore.Crypto.Hashing.Ethash.Ethash;
-using Miningcore.Crypto.Hashing.Ethash.Ethashb3;
-using Miningcore.Crypto.Hashing.Ethash.Ubqhash;
-using Miningcore.Crypto.Hashing.Progpow.Firopow;
-using Miningcore.Crypto.Hashing.Progpow.Kawpow;
-using Miningcore.Crypto.Hashing.Progpow.Meowpow;
-using Miningcore.Crypto.Hashing.Progpow.Merakipow;
-using Miningcore.Crypto.Hashing.Progpow.Phihash;
-using Miningcore.Crypto.Hashing.Progpow.ProgpowZ;
-using Miningcore.Crypto.Hashing.Progpow.Sccpow;
+using Miningcore.Crypto.Hashing.Xhash;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
 using Miningcore.Mining;
@@ -49,7 +37,6 @@ using Miningcore.Persistence.Dummy;
 using Miningcore.Persistence.Postgres;
 using Miningcore.Persistence.Postgres.Repositories;
 using Miningcore.Util;
-using NBitcoin.Zcash;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Schema;
 using Newtonsoft.Json.Schema.Generation;
@@ -297,7 +284,6 @@ public class Program : BackgroundService
     private static void ConfigureBackgroundServices(IServiceCollection services)
     {
         services.AddHostedService<NotificationService>();
-        services.AddHostedService<BtStreamReceiver>();
 
         // Share processing
         if(clusterConfig.ShareRelay == null)
@@ -784,8 +770,6 @@ public class Program : BackgroundService
     {
         await ConfigurePostgresCompatibilityOptions(services);
 
-        ZcashNetworks.Instance.EnsureRegistered();
-
         var messageBus = services.GetService<IMessageBus>();
         var rmsm = services.GetService<RecyclableMemoryStreamManager>();
 
@@ -795,73 +779,8 @@ public class Program : BackgroundService
         rmsmOptions.MaximumLargePoolFreeBytes = clusterConfig.Memory?.RmsmMaximumFreeLargePoolBytes ?? 0x800000;   // 8 MB
         rmsm = new RecyclableMemoryStreamManager(rmsmOptions);
 
-        // Configure Equihash
-        EquihashSolver.messageBus = messageBus;
-        EquihashSolver.MaxThreads = clusterConfig.EquihashMaxThreads ?? 1;
-
-        // Configure Ethhash
-        Miningcore.Crypto.Hashing.Ethash.Ethash.Cache.messageBus = messageBus;
-
-        // Configure Etchash
-        Miningcore.Crypto.Hashing.Ethash.Etchash.Cache.messageBus = messageBus;
-        
-        // Configure Ethashb3
-        Miningcore.Crypto.Hashing.Ethash.Ethashb3.Cache.messageBus = messageBus;
-
-        // Configure Ubqhash
-        Miningcore.Crypto.Hashing.Ethash.Ubqhash.Cache.messageBus = messageBus;
-
-        // Configure Verthash
-        Verthash.messageBus = messageBus;
-
-        // Configure Cryptonight
-        Cryptonight.messageBus = messageBus;
-        Cryptonight.InitContexts(GetDefaultConcurrency(clusterConfig.CryptonightMaxThreads));
-
-        // Configure RandomX
-        RandomX.messageBus = messageBus;
-
-        // Configure RandomARQ
-        RandomARQ.messageBus = messageBus;
-
-        // Configure Panthera
-        Panthera.messageBus = messageBus;
-
-        // Configure RandomXSCash
-        RandomXSCash.messageBus = messageBus;
-
-        // Configure NexaPow
-        Miningcore.Crypto.Hashing.Algorithms.NexaPow.messageBus = messageBus;
-
-        // Configure AstroBWTv3
-        AstroBWTv3.messageBus = messageBus;
-
-        // Configure BeamHash
-        BeamHash.messageBus = messageBus;
-
-        // Configure CortexCuckooCycle
-        CortexCuckooCycle.messageBus = messageBus;
-
-        // Configure Firopow
-        Miningcore.Crypto.Hashing.Progpow.Firopow.Cache.messageBus = messageBus;
-        
-        // Configure Kawpow
-        Miningcore.Crypto.Hashing.Progpow.Kawpow.Cache.messageBus = messageBus;
-
-        // Configure Meowpow
-        Miningcore.Crypto.Hashing.Progpow.Meowpow.Cache.messageBus = messageBus;
-
-        // Configure Merakipow
-        Miningcore.Crypto.Hashing.Progpow.Merakipow.Cache.messageBus = messageBus;
-
-        // Configure Phihash
-        Miningcore.Crypto.Hashing.Progpow.Phihash.Cache.messageBus = messageBus;
-
-        // Configure ProgpowZ
-        Miningcore.Crypto.Hashing.Progpow.ProgpowZ.Cache.messageBus = messageBus;
-
-        // Configure SccPow
-        Miningcore.Crypto.Hashing.Progpow.Sccpow.Cache.messageBus = messageBus;
+        // Configure XHash
+        XhashCache.messageBus = messageBus;
     }
 
     private static async Task ConfigurePostgresCompatibilityOptions(IServiceProvider services)

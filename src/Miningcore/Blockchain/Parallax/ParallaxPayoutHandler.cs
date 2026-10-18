@@ -2,10 +2,10 @@ using System.Data;
 using System.Numerics;
 using Autofac;
 using AutoMapper;
-using Miningcore.Blockchain.Ethereum;
-using Miningcore.Blockchain.Ethereum.Configuration;
-using Miningcore.Blockchain.Ethereum.DaemonRequests;
-using Miningcore.Blockchain.Ethereum.DaemonResponses;
+using Miningcore.Blockchain.Parallax;
+using Miningcore.Blockchain.Parallax.Configuration;
+using Miningcore.Blockchain.Parallax.DaemonRequests;
+using Miningcore.Blockchain.Parallax.DaemonResponses;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
@@ -20,8 +20,8 @@ using Miningcore.Util;
 using Newtonsoft.Json;
 using Block = Miningcore.Persistence.Model.Block;
 using Contract = Miningcore.Contracts.Contract;
-using DaemonResponses = Miningcore.Blockchain.Ethereum.DaemonResponses;
-using EC = Miningcore.Blockchain.Ethereum.EthCommands;
+using DaemonResponses = Miningcore.Blockchain.Parallax.DaemonResponses;
+using EC = Miningcore.Blockchain.Parallax.EthCommands;
 
 namespace Miningcore.Blockchain.Parallax;
 
@@ -57,8 +57,8 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
 
     private readonly IComponentContext ctx;
     private RpcClient rpcClient;
-    private EthereumPoolPaymentProcessingConfigExtra extraConfig;
-    private EthereumCoinTemplate coin;
+    private ParallaxPaymentProcessingConfigExtra extraConfig;
+    private ParallaxCoinTemplate coin;
 
     protected override string LogCategory => "Parallax Payout Handler";
 
@@ -68,9 +68,9 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
     {
         poolConfig = pc;
         clusterConfig = cc;
-        extraConfig = pc.PaymentProcessing.Extra.SafeExtensionDataAs<EthereumPoolPaymentProcessingConfigExtra>();
+        extraConfig = pc.PaymentProcessing.Extra.SafeExtensionDataAs<ParallaxPaymentProcessingConfigExtra>();
 
-        coin = poolConfig.Template.As<EthereumCoinTemplate>();
+        coin = poolConfig.Template.As<ParallaxCoinTemplate>();
 
         logger = LogUtil.GetPoolScopedLogger(typeof(ParallaxPayoutHandler), pc);
 
@@ -174,7 +174,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
                                 block.ConfirmationProgress = 1;
                                 block.BlockHeight = (ulong) blockInfo.Height;
                                 block.Reward = GetBaseBlockReward(block.BlockHeight);
-                                block.Type = EthereumConstants.BlockTypeBlock;
+                                block.Type = ParallaxConstants.BlockTypeBlock;
 
                                 if(extraConfig?.KeepTransactionFees == false && blockInfo.Transactions?.Length > 0)
                                     block.Reward += await GetTxRewardAsync(blockInfo, ct);
@@ -211,7 +211,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         var blockRewardRemaining = await base.UpdateBlockRewardBalancesAsync(con, tx, pool, block, ct);
 
         // Deduct static reserve for tx fees
-        blockRewardRemaining -= EthereumConstants.StaticTransactionFeeReserve;
+        blockRewardRemaining -= ParallaxConstants.StaticTransactionFeeReserve;
 
         return blockRewardRemaining;
     }
@@ -257,9 +257,9 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         var infoResponse = await rpcClient.ExecuteAsync<string>(logger, EC.GetPeerCount, ct);
 
         if(infoResponse.Error != null || string.IsNullOrEmpty(infoResponse.Response) ||
-           infoResponse.Response.IntegralFromHex<int>() < EthereumConstants.MinPayoutPeerCount)
+           infoResponse.Response.IntegralFromHex<int>() < ParallaxConstants.MinPayoutPeerCount)
         {
-            logger.Warn(() => $"[{LogCategory}] Payout aborted. Not enough peer(s) ({EthereumConstants.MinPayoutPeerCount} required)");
+            logger.Warn(() => $"[{LogCategory}] Payout aborted. Not enough peer(s) ({ParallaxConstants.MinPayoutPeerCount} required)");
             return false;
         }
 
@@ -304,7 +304,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         if(halvings > 63)
             return 0;
 
-        return (decimal) (ParallaxConstants.BaseRewardInitialWei / BigInteger.Pow(2, (int) halvings)) / EthereumConstants.Wei;
+        return (decimal) (ParallaxConstants.BaseRewardInitialWei / BigInteger.Pow(2, (int) halvings)) / ParallaxConstants.Wei;
     }
 
     private async Task<decimal> GetTxRewardAsync(DaemonResponses.Block blockInfo, CancellationToken ct)
@@ -323,7 +323,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
             .ToDictionary(x => x.TransactionHash, x => x.GasUsed);
 
         // accumulate
-        var result = blockInfo.Transactions.Sum(x => (ulong) gasUsed[x.Hash] * ((decimal) x.GasPrice / EthereumConstants.Wei));
+        var result = blockInfo.Transactions.Sum(x => (ulong) gasUsed[x.Hash] * ((decimal) x.GasPrice / ParallaxConstants.Wei));
 
         return result;
     }
@@ -333,7 +333,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         // send transaction
         logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} to {balance.Address}");
 
-        var amount = (BigInteger) Math.Floor(balance.Amount * EthereumConstants.Wei);
+        var amount = (BigInteger) Math.Floor(balance.Amount * ParallaxConstants.Wei);
 
         // legacy transaction - Parallax has no EIP-1559; the node estimates gas
         // and fills in the suggested gas price
@@ -349,7 +349,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         if(response.Error != null)
             throw new Exception($"{coin.RpcMethodPrefix}{EC.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
 
-        if(string.IsNullOrEmpty(response.Response) || EthereumConstants.ZeroHashPattern.IsMatch(response.Response))
+        if(string.IsNullOrEmpty(response.Response) || ParallaxConstants.ZeroHashPattern.IsMatch(response.Response))
             throw new Exception($"{coin.RpcMethodPrefix}{EC.SendTx} did not return a valid transaction hash");
 
         var txHash = response.Response;

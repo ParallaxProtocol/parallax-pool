@@ -207,7 +207,6 @@ public class StratumConnection
         return SendAsync(request);
     }
     
-    // Beam stratum API: https://github.com/BeamMW/beam/wiki/Beam-mining-protocol-API-(Stratum)
     public Task NotifyAsync(object request)
     {
         return SendAsync(request);

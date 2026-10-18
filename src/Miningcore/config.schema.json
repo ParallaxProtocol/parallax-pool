@@ -905,18 +905,6 @@
         ]
       }
     },
-    "cryptonightMaxThreads": {
-      "type": [
-        "integer",
-        "null"
-      ]
-    },
-    "equihashMaxThreads": {
-      "type": [
-        "integer",
-        "null"
-      ]
-    },
     "instanceId": {
       "type": [
         "integer",

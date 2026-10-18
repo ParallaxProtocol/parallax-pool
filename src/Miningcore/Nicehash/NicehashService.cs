@@ -54,12 +54,6 @@ public class NicehashService
 
     private string GetNicehashAlgo(string coin, string algo)
     {
-        if(coin == "Beam" && algo == "BeamHash")
-            return "beamv3";
-
-        if(coin == "Monero" && algo == "RandomX")
-            return "randomxmonero";
-
         return algo;
     }
 }

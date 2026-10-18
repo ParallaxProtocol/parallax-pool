@@ -1,7 +1,5 @@
 using System.Globalization;
 using System.Numerics;
-using Miningcore.Extensions;
-using NBitcoin;
 using Newtonsoft.Json;
 
 namespace Miningcore.Serialization;
@@ -35,9 +33,6 @@ public class HexToIntegralTypeJsonConverter<T> : JsonConverter
 
         if(typeof(T) == typeof(BigInteger))
             return BigInteger.Parse("0" + str, NumberStyles.HexNumber);
-
-        if(typeof(T) == typeof(uint256))
-            return new uint256(str.HexToReverseByteArray());
 
         var val = ulong.Parse("0" + str, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         return Convert.ChangeType(val, underlyingType ?? typeof(T));

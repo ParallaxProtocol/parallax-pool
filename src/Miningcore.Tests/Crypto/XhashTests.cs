@@ -49,8 +49,8 @@ public class XhashTests : TestBase
         "7913bb30f11bbf36a162338dbee4ccc51894d43792d9234a1336e3dee9ca803e")]
     public async Task Xhash_Compute_Light(ulong height, string headerHex, ulong nonce, string mixExpected, string finalExpected)
     {
-        var light = new Miningcore.Crypto.Hashing.Ethash.Xhash.XhashLight();
-        light.Setup(1, 0);
+        var light = new Miningcore.Crypto.Hashing.Xhash.XhashLight();
+        light.Setup(1);
 
         var cache = await light.GetCacheAsync(logger, height, CancellationToken.None);
 

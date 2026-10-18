@@ -1,5 +1,5 @@
-CFLAGS += -g -Wall -c -fPIC -O2 -std=c11 -Iinclude $(CPU_FLAGS) $(HAVE_FEATURE)
-CXXFLAGS += -g -Wall -fPIC -O2 -std=c++14 -fno-rtti -Iinclude $(CPU_FLAGS) $(HAVE_FEATURE)
+CFLAGS += -g -Wall -c -fPIC -O2 -std=c11 -Iinclude $(CPU_FLAGS)
+CXXFLAGS += -g -Wall -fPIC -O2 -std=c++14 -fno-rtti -Iinclude $(CPU_FLAGS)
 LDFLAGS += -shared
 TARGET = libxhash.so
 

@@ -24,7 +24,6 @@ public class MetricsPublisher : BackgroundService
 
     private readonly IMessageBus messageBus;
 
-    private Summary btStreamLatencySummary;
     private Counter shareCounter;
     private Summary rpcRequestDurationSummary;
     private Summary stratumRequestDurationSummary;
@@ -43,11 +42,6 @@ public class MetricsPublisher : BackgroundService
         });
 
         poolHashrateGauge = Metrics.CreateGauge("miningcore_pool_hashrate", "Hashrate per pool", new GaugeConfiguration
-        {
-            LabelNames = new[] { "pool" }
-        });
-
-        btStreamLatencySummary = Metrics.CreateSummary("miningcore_btstream_latency", "Latency of streaming block-templates in ms", new SummaryConfiguration
         {
             LabelNames = new[] { "pool" }
         });
@@ -102,10 +96,6 @@ public class MetricsPublisher : BackgroundService
                     else
                         invalidShareCounter.WithLabels(msg.GroupId).Inc();
                 }
-                break;
-
-            case TelemetryCategory.BtStream:
-                btStreamLatencySummary.WithLabels(msg.GroupId).Observe(msg.Elapsed.TotalMilliseconds);
                 break;
 
             case TelemetryCategory.RpcRequest:

@@ -4,7 +4,6 @@ using System.Reflection;
 using Autofac;
 using AutoMapper;
 using Miningcore.Configuration;
-using Miningcore.Native;
 using Miningcore.Tests.Util;
 using Miningcore.Time;
 
@@ -57,8 +56,6 @@ public static class ModuleInitializer
             };
 
             coinTemplates = CoinTemplateLoader.Load(container, coinDefs);
-
-            Cryptonight.InitContexts(1);
         }
     }
 }

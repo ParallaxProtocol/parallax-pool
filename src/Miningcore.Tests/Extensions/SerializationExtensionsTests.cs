@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using Miningcore.Blockchain.Bitcoin;
 using Miningcore.Extensions;
-using NBitcoin;
 using Newtonsoft.Json;
 using Xunit;
 

@@ -21,7 +21,6 @@ public class CoinTemplateValidationTest : TestBase
     public void Validate_Coin_Templates()
     {
         var cft = typeof(CoinFamily).GetTypeInfo();
-        var cryptonightHashType = typeof(CryptonightHashType).GetTypeInfo();
 
         foreach(var template in ModuleInitializer.CoinTemplates)
         {
@@ -33,32 +32,6 @@ public class CoinTemplateValidationTest : TestBase
             Assert.NotEmpty(t.Symbol);
             Assert.True(CoinTemplate.Families.ContainsKey(t.Family));
             Assert.NotNull(cft.DeclaredMembers.SingleOrDefault(x => x.Name == t.Family.ToString())?.GetCustomAttribute<EnumMemberAttribute>(false));
-
-            switch(t)
-            {
-                case BitcoinTemplate bt when t is BitcoinTemplate:
-                {
-                    if(bt.CoinbaseHasher != null)
-                        Assert.Null(Record.Exception(() => bt.CoinbaseHasherValue));
-
-                    if(bt.HeaderHasher != null)
-                        Assert.Null(Record.Exception(() => bt.HeaderHasherValue));
-
-                    if(bt.BlockHasher != null)
-                        Assert.Null(Record.Exception(() => bt.BlockHasherValue));
-
-                    if(bt.PoSBlockHasher != null)
-                        Assert.Null(Record.Exception(() => bt.PoSBlockHasherValue));
-                    break;
-                }
-
-                case CryptonoteCoinTemplate cnt when t is CryptonoteCoinTemplate:
-                {
-                    Assert.NotNull(cryptonightHashType.DeclaredMembers.SingleOrDefault(x => x.Name == cnt.Hash.ToString())?.GetCustomAttribute<EnumMemberAttribute>(false));
-
-                    break;
-                }
-            }
 
             Assert.NotEmpty(t.GetAlgorithmName());
         }

@@ -89,7 +89,7 @@ public class PayoutManager : BackgroundService
 
             try
             {
-                var family = HandleFamilyOverride(poolConfig.Template.Family, poolConfig);
+                var family = poolConfig.Template.Family;
 
                 // resolve payout handler
                 var handlerImpl = ctx.Resolve<IEnumerable<Meta<Lazy<IPayoutHandler, CoinFamilyAttribute>>>>()
@@ -129,26 +129,6 @@ public class PayoutManager : BackgroundService
                 logger.Error(ex, () => $"[{poolConfig.Id}] Payment processing failed");
             }
         }
-    }
-
-    private static CoinFamily HandleFamilyOverride(CoinFamily family, PoolConfig pool)
-    {
-        switch(family)
-        {
-            case CoinFamily.Equihash:
-                var equihashTemplate = pool.Template.As<EquihashCoinTemplate>();
-
-                if(equihashTemplate.UseBitcoinPayoutHandler)
-                    return CoinFamily.Bitcoin;
-
-                break;
-            
-            case CoinFamily.Progpow:
-            case CoinFamily.Satoshicash:
-                return CoinFamily.Bitcoin;
-        }
-
-        return family;
     }
 
     private async Task UpdatePoolBalancesAsync(IMiningPool pool, PoolConfig poolConfig, IPayoutHandler handler, IPayoutScheme scheme, CancellationToken ct)
