@@ -76,28 +76,29 @@ public class Program : BackgroundService
                 return;
             }
 
-            if(dumpConfigOption.HasValue())
-            {
-                DumpParsedConfig(clusterConfig);
-                return;
-            }
-
             if(generateSchemaOption.HasValue())
             {
                 GenerateJsonConfigSchema();
                 return;
             }
 
-            if(!configFileOption.HasValue())
+            // a config file wins; without one the environment can describe a single pool (containers)
+            if(!configFileOption.HasValue() && !EnvironmentConfig.IsPresent(Environment.GetEnvironmentVariable))
             {
                 app.ShowHelp();
+                return;
+            }
+
+            if(dumpConfigOption.HasValue())
+            {
+                DumpParsedConfig(LoadConfig());
                 return;
             }
 
             Logo();
 
             isShareRecoveryMode = shareRecoveryOption.HasValue();
-            clusterConfig = ReadConfig(configFileOption.Value());
+            clusterConfig = LoadConfig();
 
             ValidateConfig();
 
@@ -476,7 +477,7 @@ public class Program : BackgroundService
 
     private static void DumpParsedConfig(ClusterConfig config)
     {
-        Console.WriteLine("\nCurrent configuration as parsed from config file:");
+        Console.WriteLine("\nCurrent configuration as parsed:");
 
         Console.WriteLine(JsonConvert.SerializeObject(config, new JsonSerializerSettings
         {
@@ -523,7 +524,7 @@ public class Program : BackgroundService
         };
 
         versionOption = app.Option("-v|--version", "Version Information", CommandOptionType.NoValue);
-        configFileOption = app.Option("-c|--config <configfile>", "Configuration File", CommandOptionType.SingleValue);
+        configFileOption = app.Option("-c|--config <configfile>", "Configuration File (without one, a single pool is configured from environment variables)", CommandOptionType.SingleValue);
         dumpConfigOption = app.Option("-dc|--dumpconfig", "Dump the configuration (useful for trouble-shooting typos in the config file)",CommandOptionType.NoValue);
         shareRecoveryOption = app.Option("-rs", "Import lost shares using existing recovery file", CommandOptionType.SingleValue);
         generateSchemaOption = app.Option("-gcs|--generate-config-schema <outputfile>", "Generate JSON schema from configuration options", CommandOptionType.SingleValue);
@@ -534,18 +535,33 @@ public class Program : BackgroundService
         return app;
     }
 
-    private static ClusterConfig ReadConfig(string file)
+    private static ClusterConfig LoadConfig()
+    {
+        if(configFileOption.HasValue())
+        {
+            var file = configFileOption.Value();
+            Console.WriteLine($"Using configuration file '{file}'");
+
+            return ReadConfig(() => new StreamReader(file, Encoding.UTF8));
+        }
+
+        Console.WriteLine("Using configuration from environment variables");
+
+        var json = EnvironmentConfig.Build(Environment.GetEnvironmentVariable).ToString();
+
+        return ReadConfig(() => new StringReader(json));
+    }
+
+    private static ClusterConfig ReadConfig(Func<TextReader> open)
     {
         try
         {
-            Console.WriteLine($"Using configuration file '{file}'");
-
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             });
 
-            using(var reader = new StreamReader(file, Encoding.UTF8))
+            using(var reader = open())
             {
                 using(var jsonReader = new JsonTextReader(reader))
                 {
@@ -640,6 +656,8 @@ public class Program : BackgroundService
             loggingConfig.AddRule(level, NLog.LogLevel.Info, nullTarget, "Microsoft.AspNetCore.Mvc.Infrastructure.*", true);
             loggingConfig.AddRule(level, NLog.LogLevel.Warn, nullTarget, "System.Net.Http.HttpClient.*", true);
             loggingConfig.AddRule(level, NLog.LogLevel.Fatal, nullTarget, "Microsoft.Extensions.Hosting.Internal.*", true);
+            // ASP.NET's key ring is unused (no cookies, no antiforgery), its "keys not persisted" warnings are noise
+            loggingConfig.AddRule(level, NLog.LogLevel.Warn, nullTarget, "Microsoft.AspNetCore.DataProtection.*", true);
 
             // Api Log
             if(!string.IsNullOrEmpty(config.ApiLogFile) && !isShareRecoveryMode)
@@ -749,6 +767,7 @@ public class Program : BackgroundService
 
     private static async Task PreFlightChecks(IServiceProvider services)
     {
+        await EnsurePostgresSchemaAsync(services);
         await ConfigurePostgresCompatibilityOptions(services);
 
         var messageBus = services.GetService<IMessageBus>();
@@ -762,6 +781,46 @@ public class Program : BackgroundService
 
         // Configure XHash
         XhashCache.messageBus = messageBus;
+    }
+
+    /// <summary>
+    /// Waits for the database to accept connections and creates the schema on first start
+    /// </summary>
+    private static async Task EnsurePostgresSchemaAsync(IServiceProvider services)
+    {
+        if(clusterConfig.Persistence?.Postgres == null)
+            return;
+
+        var cf = services.GetService<IConnectionFactory>();
+        var pg = clusterConfig.Persistence.Postgres;
+        const int maxAttempts = 30;
+
+        for(var attempt = 1;; attempt++)
+        {
+            try
+            {
+                var exists = await cf.Run(async con => await con.ExecuteScalarAsync<string>("SELECT to_regclass('shares')::text")) != null;
+
+                if(exists)
+                    return;
+
+                logger.Info(() => $"Creating database schema in {pg.Database}");
+
+                await using var stream = typeof(Program).Assembly.GetManifestResourceStream("createdb.sql")!;
+                using var reader = new StreamReader(stream);
+                var script = await reader.ReadToEndAsync();
+
+                await cf.RunTx(async (con, tx) => await con.ExecuteAsync(script, transaction: tx));
+                return;
+            }
+
+            catch(Npgsql.NpgsqlException ex) when(attempt < maxAttempts && ex.SqlState is null or "57P03")
+            {
+                // unreachable (no SQL state) or "the database system is starting up"
+                logger.Info(() => $"Waiting for database at {pg.Host}:{pg.Port} ({ex.Message})");
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+        }
     }
 
     private static async Task ConfigurePostgresCompatibilityOptions(IServiceProvider services)
