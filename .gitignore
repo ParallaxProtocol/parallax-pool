@@ -216,3 +216,7 @@ fabric.properties
 
 # docker compose settings (contain passwords)
 .env
+
+# web UI
+ui/node_modules/
+ui/dist/

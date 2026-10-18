@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
@@ -201,6 +202,12 @@ public class Program : BackgroundService
                     })
                     .Configure(app =>
                     {
+                        app.UseResponseCompression();
+
+                        // the web UI is served before rate limiting, so loading its assets
+                        // doesn't use up a visitor's API allowance
+                        UseWebUi(app);
+
                         if(enableApiRateLimiting)
                             app.UseIpRateLimiting();
 
@@ -219,7 +226,6 @@ public class Program : BackgroundService
                         app.UseOpenApi();
                         #endif
 
-                        app.UseResponseCompression();
                         app.UseCors(corsPolicyBuilder => corsPolicyBuilder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
                         app.UseWebSockets();
                         app.MapWebSocketManager("/notifications", app.ApplicationServices.GetService<WebSocketNotificationsRelay>());
@@ -952,6 +958,67 @@ public class Program : BackgroundService
         .ToArray();
 
         return CoinTemplateLoader.Load(container, clusterConfig.CoinTemplates);
+    }
+
+    private static readonly string[] apiPaths = { "/api", "/notifications", "/metrics" };
+
+    /// <summary>
+    /// Serves the web UI from wwwroot next to the binary, if present. Paths that aren't files or
+    /// API endpoints (client-side routes like /miners/0x...) get index.html.
+    /// </summary>
+    private static void UseWebUi(IApplicationBuilder app)
+    {
+        var webRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+
+        if(!File.Exists(Path.Combine(webRoot, "index.html")))
+            return;
+
+        var files = new PhysicalFileProvider(webRoot);
+        var index = files.GetFileInfo("index.html");
+
+        static void SecurityHeaders(HttpResponse response)
+        {
+            response.Headers["X-Content-Type-Options"] = "nosniff";
+            response.Headers["Referrer-Policy"] = "same-origin";
+            response.Headers["Content-Security-Policy"] = "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; " +
+                "style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+        }
+
+        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
+
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = files,
+            OnPrepareResponse = ctx =>
+            {
+                // bundles have content hashes in their names, everything else must be revalidated
+                ctx.Context.Response.Headers.CacheControl = ctx.Context.Request.Path.StartsWithSegments("/assets") ?
+                    "public, max-age=31536000, immutable" : "no-cache";
+
+                if(ctx.File.Name.EndsWith(".html"))
+                    SecurityHeaders(ctx.Context.Response);
+            }
+        });
+
+        app.Use(async (ctx, next) =>
+        {
+            var path = ctx.Request.Path;
+
+            if(!HttpMethods.IsGet(ctx.Request.Method) || Path.HasExtension(path.Value) ||
+               apiPaths.Any(x => path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase)))
+            {
+                await next();
+                return;
+            }
+
+            ctx.Response.ContentType = "text/html; charset=utf-8";
+            ctx.Response.Headers.CacheControl = "no-cache";
+            SecurityHeaders(ctx.Response);
+
+            await ctx.Response.SendFileAsync(index);
+        });
+
+        logger.Info(() => $"Serving the web UI from {webRoot}");
     }
 
     private static void UseIpWhiteList(IApplicationBuilder app, bool defaultToLoopback, string[] locations, string[] whitelist)

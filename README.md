@@ -20,6 +20,7 @@ and XHash validation, the halving reward schedule and the 100-block coinbase loc
   duplicates are orphaned
 - REST API and WebSocket event stream (`/notifications`) for blocks, payments and hashrate
 - Prometheus metrics, banning, e-mail/Pushover notifications, ZeroMQ share relays for multi-node setups
+- A web interface for miners and operators, served by the pool itself
 - Runs from environment variables alone and creates its database schema on first start
 
 ## Quick start (Docker Compose)
@@ -37,6 +38,15 @@ The pool waits for the node to sync (about a minute on mainnet today), then acce
 4073. The API is on port 4000. The node's RPC and the database are not exposed outside the compose
 project. Until release images are published, the first `up` reports that it can't pull
 `parallaxprotocol/parallax-pool` and builds it locally instead.
+
+Open `http://<this-host>:4000` for the web interface:
+- **Overview:** the pool's hashrate, how often it can expect a block, and the last 100 blocks of
+  the chain with this pool's blocks highlighted until their rewards unlock.
+- **Blocks** and **Payments** pages.
+- **Connect page:** builds the miner command for your address.
+- **Miner page:** per-address hashrate, workers and payouts.
+
+It updates live from the pool's event stream and needs no configuration of its own.
 
 ### Payout modes
 
@@ -128,6 +138,16 @@ file instead of environment variables: start from
 (in Docker: mount it and pass `./parallax-pool -c config.json` as the command).
 [`config.schema.json`](src/Miningcore/config.schema.json) lists every option. Set
 `paymentProcessing.directRewards` to `true` for direct rewards.
+
+### Web interface development
+
+The interface lives in [`ui/`](ui) (React, Vite, TypeScript) and is built into the Docker image,
+where the pool serves it next to the API. To work on it against a running pool:
+
+```bash
+cd ui && npm ci
+POOL_API=http://localhost:4000 npm run dev
+```
 
 ### Node setup
 

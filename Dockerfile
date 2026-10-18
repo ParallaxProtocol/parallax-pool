@@ -1,3 +1,12 @@
+# The web UI is static files, built once on the build machine for every target architecture
+FROM --platform=$BUILDPLATFORM node:24-alpine AS ui
+
+WORKDIR /ui
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY ui/ ./
+RUN npm run build
+
 # The build stage always runs on the build machine's own architecture and cross-compiles
 # for the target (.NET publish -a, plus a cross C++ toolchain for libxhash), so arm64
 # images don't need the whole build to run under emulation.
@@ -46,6 +55,7 @@ ENV ASPNETCORE_HTTP_PORTS=
 ENV SHARE_RECOVERY_FILE=/data/recovered-shares.txt
 
 COPY --from=builder /build ./
+COPY --from=ui /ui/dist ./wwwroot
 
 USER app
 
