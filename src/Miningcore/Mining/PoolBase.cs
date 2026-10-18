@@ -386,6 +386,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
     public PoolConfig Config => poolConfig;
     public PoolStats PoolStats => poolStats;
     public BlockchainStats NetworkStats => blockchainStats;
+    public bool IsOnline { get; private set; }
 
     public virtual void Configure(PoolConfig pc, ClusterConfig cc)
     {
@@ -415,6 +416,7 @@ Pool Fee:               {(poolConfig.RewardRecipients?.Any() == true ? poolConfi
 
             LogPoolInfo();
 
+            IsOnline = true;
             messageBus.NotifyPoolStatus(this, PoolStatus.Online);
 
             if(poolConfig.EnableInternalStratum == true)

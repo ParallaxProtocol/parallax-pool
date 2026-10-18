@@ -41,7 +41,6 @@ public static class EthCommands
     public const string GetNetVersion = "net_version";
     public const string GetClientVersion = "web3_clientVersion";
     public const string GetCoinbase = "_coinbase";
-    public const string GetAccounts = "_accounts";
     public const string GetPeerCount = "net_peerCount";
     public const string GetSyncState = "_syncing";
     public const string GetBlockByNumber = "_getBlockByNumber";

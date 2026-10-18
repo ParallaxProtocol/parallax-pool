@@ -12,6 +12,11 @@ public class BlockchainStats
     public int ConnectedPeers { get; set; }
     public string NodeVersion { get; set; } = "Unknown";
     public string RewardType { get; set; }
+
+    /// <summary>
+    /// Share of the chain the node has downloaded (0..1) while it is still syncing, otherwise null
+    /// </summary>
+    public double? SyncProgress { get; set; }
 }
 
 public interface IExtraNonceProvider

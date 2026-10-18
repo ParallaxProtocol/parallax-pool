@@ -18,4 +18,9 @@ public class ParallaxPoolConfigExtra
     /// "Ethash Stratum V1" protocol is disabled by default
     /// </summary>
     public bool EnableEthashStratumV1 { get; set; } = false;
+
+    /// <summary>
+    /// Addresses the pool mined to before the current one: blocks with these coinbases are still the pool's
+    /// </summary>
+    public string[] PreviousAddresses { get; set; }
 }

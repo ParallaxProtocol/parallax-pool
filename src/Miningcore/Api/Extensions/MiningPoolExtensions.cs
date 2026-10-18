@@ -12,8 +12,12 @@ public static class MiningPoolExtensions
     {
         var poolInfo = poolConfig.ToApi();
 
-        poolInfo.PoolStats = stats.ToMiningPoolStats();
-        poolInfo.NetworkStats = pool?.NetworkStats ?? stats.ToBlockchainStats();
+        // a fresh pool has no stats samples yet: report zeros rather than nulls
+        poolInfo.PoolStats = stats.ToMiningPoolStats() ?? new PoolStats();
+        poolInfo.NetworkStats = pool?.NetworkStats ?? stats.ToBlockchainStats() ?? new BlockchainStats();
+
+        poolInfo.Status = pool?.IsOnline == true ? "online" :
+            poolInfo.NetworkStats.SyncProgress.HasValue ? "syncing" : "starting";
 
         // pool wallet link
         var addressInfobaseUrl = poolConfig.Template.ExplorerAccountLink;

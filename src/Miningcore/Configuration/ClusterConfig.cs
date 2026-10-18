@@ -663,6 +663,12 @@ public partial class ClusterConfig
 
     public string ShareRecoveryFile { get; set; }
 
+    /// <summary>
+    /// Directory for settings made in the web UI (first-run setup). Enables the setup API, so only
+    /// set it where the web UI is protected, e.g. behind umbrelOS's login.
+    /// </summary>
+    public string SettingsDirectory { get; set; }
+
     [Required]
     public PoolConfig[] Pools { get; set; }
 }

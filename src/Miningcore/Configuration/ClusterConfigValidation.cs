@@ -201,8 +201,12 @@ public class ClusterConfigValidator : AbstractValidator<ClusterConfig>
             .When(x => x.PaymentProcessing?.Enabled == true && x.ShareRelay == null);
 
         RuleFor(j => j.Pools)
-            .NotNull()
-            .NotEmpty();
+            .NotNull();
+
+        // with a settings directory, an empty pool list means the web UI's first-run setup is pending
+        RuleFor(j => j.Pools)
+            .NotEmpty()
+            .When(x => string.IsNullOrEmpty(x.SettingsDirectory));
 
         RuleFor(j => j.InstanceId)
             .GreaterThan((byte) 0)

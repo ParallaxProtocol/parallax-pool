@@ -63,6 +63,7 @@ public static partial class ModelMapper
     [MapperIgnoreTarget(nameof(BlockchainStats.NextNetworkBits))]
     [MapperIgnoreTarget(nameof(BlockchainStats.NodeVersion))]
     [MapperIgnoreTarget(nameof(BlockchainStats.RewardType))]
+    [MapperIgnoreTarget(nameof(BlockchainStats.SyncProgress))]
     public static partial BlockchainStats ToBlockchainStats(this PoolStats stats);
 
     #endregion
@@ -106,6 +107,7 @@ public static partial class ModelMapper
     [MapperIgnoreTarget(nameof(Dto.PoolInfo.BlockReward))]
     [MapperIgnoreTarget(nameof(Dto.PoolInfo.LastPoolBlockTime))]
     [MapperIgnoreTarget(nameof(Dto.PoolInfo.PoolEffort))]
+    [MapperIgnoreTarget(nameof(Dto.PoolInfo.Status))]
     public static partial Dto.PoolInfo ToApi(this PoolConfig pool);
 
     // the payout scheme config is converted from its raw JSON by MiningPoolExtensions.ToPoolInfo

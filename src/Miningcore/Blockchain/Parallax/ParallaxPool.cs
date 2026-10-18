@@ -442,6 +442,9 @@ public class ParallaxPool : PoolBase
 
         manager.Configure(poolConfig, clusterConfig);
 
+        // expose the manager's stats right away, so the API can report sync progress during startup
+        blockchainStats = manager.BlockchainStats;
+
         await manager.StartAsync(ct);
 
         if(poolConfig.EnableInternalStratum == true)

@@ -212,6 +212,7 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
                     var lowestHeight = syncState.CurrentBlock.Value;
                     var totalBlocks = syncState.HighestBlock.Value;
                     var blocksPercent = (double) lowestHeight / totalBlocks * 100;
+                    BlockchainStats.SyncProgress = Math.Min(1, (double) lowestHeight / totalBlocks);
 
                     if(syncState.KnownStates.HasValue)
                     {
@@ -513,6 +514,7 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
 
             if(isSynched)
             {
+                BlockchainStats.SyncProgress = null;
                 logger.Info(() => "All daemons synched with blockchain");
                 break;
             }
@@ -531,31 +533,14 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
     {
         var coin = poolConfig.Template.As<ParallaxCoinTemplate>();
 
-        var requests = new[]
-        {
-            new RpcRequest(EC.GetNetVersion),
-            new RpcRequest(coin.RpcMethodPrefix + EC.GetAccounts),
-            new RpcRequest(coin.RpcMethodPrefix + EC.GetCoinbase),
-        };
+        var response = await rpc.ExecuteAsync<string>(logger, EC.GetNetVersion, ct);
 
-        var responses = await rpc.ExecuteBatchAsync(logger, ct, requests);
+        if(response.Error != null)
+            throw new PoolStartupException($"Init RPC failed: {response.Error.Message}", poolConfig.Id);
 
-        if(responses.Any(x => x.Error != null))
-        {
-            var errors = responses.Take(3).Where(x => x.Error != null)
-                .ToArray();
+        var netVersion = response.Response;
 
-            if(errors.Any())
-                throw new PoolStartupException($"Init RPC failed: {string.Join(", ", errors.Select(y => y.Error.Message))}", poolConfig.Id);
-        }
-
-        // extract results
-        var netVersion = responses[0].Response.ToObject<string>();
-        var coinbase = responses[2].Response.ToObject<string>();
-
-        // block ownership is decided by the coinbase: blocks mined to any other address are never confirmed
-        if(!string.Equals(coinbase, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
-            throw new PoolStartupException($"The node's coinbase {coinbase} is not the pool address {poolConfig.Address}. Start parallaxd with --miner.coinbase {poolConfig.Address}", poolConfig.Id);
+        await WaitForCoinbaseAsync(coin, ct);
 
         // update stats
         BlockchainStats.RewardType = "POW";
@@ -602,6 +587,33 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
         }
 
         await SetupJobUpdates(ct);
+    }
+
+    /// <summary>
+    /// Block ownership is decided by the coinbase: blocks mined to any other address would never
+    /// be confirmed. Waits (instead of failing) because the node may still be restarting with a
+    /// newly configured address.
+    /// </summary>
+    private async Task WaitForCoinbaseAsync(ParallaxCoinTemplate coin, CancellationToken ct)
+    {
+        var lastLog = DateTime.MinValue;
+
+        while(true)
+        {
+            var response = await rpc.ExecuteAsync<string>(logger, coin.RpcMethodPrefix + EC.GetCoinbase, ct);
+
+            if(response.Error == null && string.Equals(response.Response, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if(DateTime.UtcNow - lastLog > TimeSpan.FromMinutes(1))
+            {
+                var current = response.Error != null ? $"has no coinbase ({response.Error.Message})" : $"mines to {response.Response}";
+                logger.Warn(() => $"Waiting for the node to mine to the pool address {poolConfig.Address}: it {current}. Start parallaxd with --miner.coinbase {poolConfig.Address}");
+                lastLog = DateTime.UtcNow;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        }
     }
 
     private static string GetNetworkType(string netVersion)

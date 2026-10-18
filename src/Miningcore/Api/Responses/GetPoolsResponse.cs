@@ -63,6 +63,11 @@ public class ApiPoolPaymentProcessingConfig
 
 public partial class PoolInfo
 {
+    /// <summary>
+    /// starting (connecting to the node), syncing (node downloading the chain) or online
+    /// </summary>
+    public string Status { get; set; }
+
     // Configuration Properties directly mapping to PoolConfig (omitting security relevant fields)
     public string Id { get; set; }
 

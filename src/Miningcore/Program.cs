@@ -254,6 +254,9 @@ public class Program : BackgroundService
                 await Console.Error.WriteLineAsync(ex.Message);
 
             await Console.Error.WriteLineAsync("\nCluster cannot start. Good Bye!");
+
+            // let process supervisors (docker restart policies, systemd) see the failure
+            Environment.ExitCode = 1;
         }
 
         catch(JsonException)
@@ -378,6 +381,7 @@ public class Program : BackgroundService
 
                     logger.Error(() => "Cluster cannot start. Good Bye!");
 
+                    Environment.ExitCode = 1;
                     hal.StopApplication();
                     break;
                 }
@@ -442,7 +446,8 @@ public class Program : BackgroundService
 
     private static void ValidateConfig()
     {
-        if(!clusterConfig.Pools.Any(x => x.Enabled))
+        // with a settings directory, no pool yet means the web UI's first-run setup is pending
+        if(!clusterConfig.Pools.Any(x => x.Enabled) && string.IsNullOrEmpty(clusterConfig.SettingsDirectory))
             throw new PoolStartupException("No pools are enabled.");
 
         // set some defaults

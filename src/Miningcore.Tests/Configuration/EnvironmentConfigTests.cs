@@ -113,6 +113,46 @@ public class EnvironmentConfigTests : TestBase
         Assert.True(config.Api.RateLimiting.Disabled);
     }
 
+    [Fact]
+    public void Settings_Directory_Without_Address_Waits_For_Setup()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        var env = new Dictionary<string, string> { ["SETTINGS_DIR"] = dir, ["DB_PASSWORD"] = "secret" };
+
+        Assert.True(EnvironmentConfig.IsPresent(n => env.TryGetValue(n, out var v) ? v : null));
+
+        var config = Load(env);
+        Assert.Empty(config.Pools);
+        Assert.Equal(dir, config.SettingsDirectory);
+    }
+
+    [Fact]
+    public void Settings_Directory_Provides_Address_And_Previous_Addresses()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        new PoolSettings().WithAddress("0x1111111111111111111111111111111111111111").Save(dir);
+        PoolSettings.Load(dir).WithAddress(Address).Save(dir);
+
+        Assert.Equal(Address + "\n", File.ReadAllText(Path.Combine(dir, "coinbase")));
+
+        var config = Load(new Dictionary<string, string> { ["SETTINGS_DIR"] = dir, ["DB_PASSWORD"] = "secret" });
+        var pool = config.Pools.Single();
+
+        Assert.Equal(Address, pool.Address);
+        Assert.Equal(new[] { "0x1111111111111111111111111111111111111111" },
+            pool.Extra.SafeExtensionDataAs<ParallaxPoolConfigExtra>().PreviousAddresses);
+    }
+
+    [Fact]
+    public void Changing_Back_To_A_Previous_Address_Removes_It_From_The_List()
+    {
+        var settings = new PoolSettings().WithAddress("0x1111111111111111111111111111111111111111").WithAddress(Address);
+        Assert.Same(settings, settings.WithAddress(Address.ToUpperInvariant().Replace("0X", "0x")));
+
+        var back = settings.WithAddress("0x1111111111111111111111111111111111111111");
+        Assert.Equal(new[] { Address }, back.PreviousAddresses);
+    }
+
     [Theory]
     [InlineData("DB_PASSWORD", null)]
     [InlineData("STRATUM_DIFFICULTY", "abc")]

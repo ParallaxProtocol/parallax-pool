@@ -56,6 +56,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
     private readonly IComponentContext ctx;
     private RpcClient rpcClient;
     private ParallaxPaymentProcessingConfigExtra extraConfig;
+    private string[] previousAddresses = Array.Empty<string>();
     private ParallaxCoinTemplate coin;
 
     protected override string LogCategory => "Parallax Payout Handler";
@@ -69,6 +70,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
         extraConfig = pc.PaymentProcessing.Extra.SafeExtensionDataAs<ParallaxPaymentProcessingConfigExtra>();
 
         coin = poolConfig.Template.As<ParallaxCoinTemplate>();
+        previousAddresses = pc.Extra.SafeExtensionDataAs<ParallaxPoolConfigExtra>()?.PreviousAddresses ?? Array.Empty<string>();
 
         logger = LogUtil.GetPoolScopedLogger(typeof(ParallaxPayoutHandler), pc);
 
@@ -122,7 +124,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
                 messageBus.NotifyBlockConfirmationProgress(poolConfig.Id, block, coin);
 
                 // is it block mined by us?
-                if(string.Equals(blockInfo.Miner, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
+                if(IsPoolCoinbase(blockInfo.Miner))
                 {
                     // mature? (the on-chain lockbox credits the coinbase only after MinConfirmations blocks)
                     if(latestBlockHeight - block.BlockHeight >= ParallaxConstants.MinConfirmations)
@@ -165,7 +167,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
 
                             var blockMiner = blockHashResponse.Response.Miner;
 
-                            if(string.Equals(blockMiner, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
+                            if(IsPoolCoinbase(blockMiner))
                             {
                                 block.Hash = blockHashResponse.Response.Hash;
                                 block.Status = BlockStatus.Confirmed;
@@ -249,6 +251,15 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
     }
 
     #endregion // IPayoutHandler
+
+    /// <summary>
+    /// Whether a block's coinbase is this pool: its address, or one it used before (see PoolSettings)
+    /// </summary>
+    private bool IsPoolCoinbase(string miner)
+    {
+        return string.Equals(miner, poolConfig.Address, StringComparison.OrdinalIgnoreCase) ||
+            previousAddresses.Any(x => string.Equals(miner, x, StringComparison.OrdinalIgnoreCase));
+    }
 
     private async Task<bool> EnsureDaemonsSynchedAsync(CancellationToken ct)
     {

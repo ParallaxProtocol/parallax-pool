@@ -959,6 +959,12 @@
         "$ref": "#/definitions/PoolConfig"
       }
     },
+    "settingsDirectory": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "shareRecoveryFile": {
       "type": [
         "string",

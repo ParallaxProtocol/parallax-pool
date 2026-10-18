@@ -12,11 +12,11 @@ namespace Miningcore.Configuration;
 public static class EnvironmentConfig
 {
     /// <summary>
-    /// The variable that has to be present for the environment to be used as configuration
+    /// The environment is used as configuration when it names the pool address, or a settings
+    /// directory where the web UI's first-run setup stores it
     /// </summary>
-    public const string RequiredVariable = "POOL_ADDRESS";
-
-    public static bool IsPresent(Func<string, string> env) => !string.IsNullOrWhiteSpace(env(RequiredVariable));
+    public static bool IsPresent(Func<string, string> env) =>
+        !string.IsNullOrWhiteSpace(env("POOL_ADDRESS")) || !string.IsNullOrWhiteSpace(env("SETTINGS_DIR"));
 
     public static JObject Build(Func<string, string> env)
     {
@@ -59,7 +59,12 @@ public static class EnvironmentConfig
             _ => (false, false)
         });
 
-        var address = Required("POOL_ADDRESS");
+        var settingsDir = Str("SETTINGS_DIR");
+        var settings = settingsDir != null ? PoolSettings.Load(settingsDir) : new PoolSettings();
+        var address = Str("POOL_ADDRESS") ?? settings.Address;
+
+        if(address == null && settingsDir == null)
+            throw new PoolStartupException("Environment variable POOL_ADDRESS is required");
 
         var payoutMode = Str("PAYOUT_MODE", "direct").ToLowerInvariant();
 
@@ -160,6 +165,7 @@ public static class EnvironmentConfig
             ["ports"] = new JObject { [Int("STRATUM_PORT", 4073).ToString(CultureInfo.InvariantCulture)] = port },
             ["daemons"] = new JArray(daemon),
             ["paymentProcessing"] = paymentProcessing,
+            ["previousAddresses"] = new JArray(settings.PreviousAddresses),
         };
 
         return new JObject
@@ -204,7 +210,9 @@ public static class EnvironmentConfig
                     ? new JObject { ["rules"] = new JArray(new JObject { ["endpoint"] = "*", ["period"] = "1s", ["limit"] = limit }) }
                     : new JObject { ["disabled"] = true },
             },
-            ["pools"] = new JArray(pool),
+            ["settingsDirectory"] = settingsDir,
+            // without an address the pool waits for the web UI's first-run setup
+            ["pools"] = address != null ? new JArray(pool) : new JArray(),
         };
     }
 }
