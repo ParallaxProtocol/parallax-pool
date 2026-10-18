@@ -2,7 +2,6 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Autofac;
-using AutoMapper;
 using Microsoft.IO;
 using Miningcore.Blockchain.Parallax.Configuration;
 using Miningcore.Configuration;
@@ -33,12 +32,11 @@ public class ParallaxPool : PoolBase
         JsonSerializerSettings serializerSettings,
         IConnectionFactory cf,
         IStatsRepository statsRepo,
-        IMapper mapper,
         IMasterClock clock,
         IMessageBus messageBus,
         RecyclableMemoryStreamManager rmsm,
         NicehashService nicehashService) :
-        base(ctx, serializerSettings, cf, statsRepo, mapper, clock, messageBus, rmsm, nicehashService)
+        base(ctx, serializerSettings, cf, statsRepo, clock, messageBus, rmsm, nicehashService)
     {
     }
 

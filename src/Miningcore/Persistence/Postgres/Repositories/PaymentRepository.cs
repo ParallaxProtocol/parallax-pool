@@ -1,6 +1,5 @@
 using System.Data;
 using System.Text;
-using AutoMapper;
 using Dapper;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Model.Projections;
@@ -12,16 +11,9 @@ namespace Miningcore.Persistence.Postgres.Repositories;
 
 public class PaymentRepository : IPaymentRepository
 {
-    public PaymentRepository(IMapper mapper)
-    {
-        this.mapper = mapper;
-    }
-
-    private readonly IMapper mapper;
-
     public async Task InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment)
     {
-        var mapped = mapper.Map<Entities.Payment>(payment);
+        var mapped = payment.ToEntity();
 
         const string query = @"INSERT INTO payments(poolid, coin, address, amount, transactionconfirmationdata, created)
             VALUES(@poolid, @coin, @address, @amount, @transactionconfirmationdata, @created)";
@@ -67,7 +59,7 @@ public class PaymentRepository : IPaymentRepository
 
         return (await con.QueryAsync<Entities.Payment>(new CommandDefinition(query.ToString(),
                 new { poolId, address, offset = page * pageSize, pageSize }, cancellationToken: ct)))
-            .Select(mapper.Map<Payment>)
+            .Select(x => x.ToModel())
             .ToArray();
     }
 
@@ -79,7 +71,7 @@ public class PaymentRepository : IPaymentRepository
 
         return (await con.QueryAsync<Entities.BalanceChange>(new CommandDefinition(query,
                 new { poolId, address, offset = page * pageSize, pageSize }, cancellationToken: ct)))
-            .Select(mapper.Map<BalanceChange>)
+            .Select(x => x.ToModel())
             .ToArray();
     }
 

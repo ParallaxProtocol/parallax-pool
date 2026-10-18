@@ -1,5 +1,4 @@
 using System.Data;
-using AutoMapper;
 using Dapper;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Model.Projections;
@@ -11,13 +10,6 @@ namespace Miningcore.Persistence.Postgres.Repositories;
 
 public class ShareRepository : IShareRepository
 {
-    public ShareRepository(IMapper mapper)
-    {
-        this.mapper = mapper;
-    }
-
-    private readonly IMapper mapper;
-
     public async Task BatchInsertAsync(IDbConnection con, IDbTransaction tx, IEnumerable<Share> shares, CancellationToken ct)
     {
         // NOTE: Even though the tx parameter is completely ignored here,
@@ -57,7 +49,7 @@ public class ShareRepository : IShareRepository
             ORDER BY created DESC FETCH NEXT @pageSize ROWS ONLY";
 
         return (await con.QueryAsync<Entities.Share>(new CommandDefinition(query, new { poolId, before, pageSize }, cancellationToken: ct)))
-            .Select(mapper.Map<Share>)
+            .Select(x => x.ToModel())
             .ToArray();
     }
 

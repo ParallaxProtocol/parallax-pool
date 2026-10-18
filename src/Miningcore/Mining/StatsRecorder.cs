@@ -6,7 +6,6 @@ using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Autofac;
-using AutoMapper;
 using Microsoft.Extensions.Hosting;
 using Miningcore.Configuration;
 using Miningcore.Contracts;
@@ -29,7 +28,6 @@ public class StatsRecorder : BackgroundService
         IMasterClock clock,
         IConnectionFactory cf,
         IMessageBus messageBus,
-        IMapper mapper,
         ClusterConfig clusterConfig,
         IShareRepository shareRepo,
         IStatsRepository statsRepo)
@@ -38,13 +36,11 @@ public class StatsRecorder : BackgroundService
         Contract.RequiresNonNull(clock);
         Contract.RequiresNonNull(cf);
         Contract.RequiresNonNull(messageBus);
-        Contract.RequiresNonNull(mapper);
         Contract.RequiresNonNull(shareRepo);
         Contract.RequiresNonNull(statsRepo);
 
         this.clock = clock;
         this.cf = cf;
-        this.mapper = mapper;
         this.messageBus = messageBus;
         this.shareRepo = shareRepo;
         this.statsRepo = statsRepo;
@@ -61,7 +57,6 @@ public class StatsRecorder : BackgroundService
     private readonly IMasterClock clock;
     private readonly IStatsRepository statsRepo;
     private readonly IConnectionFactory cf;
-    private readonly IMapper mapper;
     private readonly IMessageBus messageBus;
     private readonly IShareRepository shareRepo;
     private readonly ClusterConfig clusterConfig;
@@ -154,14 +149,7 @@ public class StatsRecorder : BackgroundService
             // persist
             await cf.RunTx(async (con, tx) =>
             {
-                var mapped = new Persistence.Model.PoolStats
-                {
-                    PoolId = poolId,
-                    Created = now
-                };
-
-                mapper.Map(pool.PoolStats, mapped);
-                mapper.Map(pool.NetworkStats, mapped);
+                var mapped = pool.PoolStats.ToPoolStats(pool.NetworkStats, poolId, now);
 
                 await statsRepo.InsertPoolStatsAsync(con, tx, mapped, ct);
             });

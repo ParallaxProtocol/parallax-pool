@@ -1,5 +1,4 @@
 using System.Data;
-using AutoMapper;
 using Dapper;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
@@ -8,20 +7,13 @@ namespace Miningcore.Persistence.Postgres.Repositories;
 
 public class MinerRepository : IMinerRepository
 {
-    public MinerRepository(IMapper mapper)
-    {
-        this.mapper = mapper;
-    }
-
-    private readonly IMapper mapper;
-
     public async Task<MinerSettings> GetSettingsAsync(IDbConnection con, IDbTransaction tx, string poolId, string address)
     {
         const string query = @"SELECT * FROM miner_settings WHERE poolid = @poolId AND address = @address";
 
         var entity = await con.QuerySingleOrDefaultAsync<Entities.MinerSettings>(query, new {poolId, address}, tx);
 
-        return mapper.Map<MinerSettings>(entity);
+        return entity.ToModel();
     }
 
     public Task UpdateSettingsAsync(IDbConnection con, IDbTransaction tx, MinerSettings settings)

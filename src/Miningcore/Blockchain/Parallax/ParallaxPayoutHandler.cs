@@ -1,7 +1,6 @@
 using System.Data;
 using System.Numerics;
 using Autofac;
-using AutoMapper;
 using Miningcore.Blockchain.Parallax;
 using Miningcore.Blockchain.Parallax.Configuration;
 using Miningcore.Blockchain.Parallax.DaemonRequests;
@@ -39,14 +38,13 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
     public ParallaxPayoutHandler(
         IComponentContext ctx,
         IConnectionFactory cf,
-        IMapper mapper,
         IShareRepository shareRepo,
         IBlockRepository blockRepo,
         IBalanceRepository balanceRepo,
         IPaymentRepository paymentRepo,
         IMasterClock clock,
         IMessageBus messageBus) :
-        base(cf, mapper, shareRepo, blockRepo, balanceRepo, paymentRepo, clock, messageBus)
+        base(cf, shareRepo, blockRepo, balanceRepo, paymentRepo, clock, messageBus)
     {
         Contract.RequiresNonNull(ctx);
         Contract.RequiresNonNull(balanceRepo);

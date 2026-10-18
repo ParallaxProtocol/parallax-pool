@@ -63,7 +63,7 @@ public class PoolApiController : ApiControllerBase
                 pools.TryGetValue(config.Id, out var pool);
 
                 // map
-                var result = config.ToPoolInfo(mapper, stats, pool);
+                var result = config.ToPoolInfo(stats, pool);
 
                 // enrich
                 result.TotalPaid = await cf.Run(con => statsRepo.GetTotalPoolPaymentsAsync(con, config.Id, ct));
@@ -93,7 +93,7 @@ public class PoolApiController : ApiControllerBase
 
                 var minersByHashrate = await cf.Run(con => statsRepo.PagePoolMinersByHashrateAsync(con, config.Id, from, 0, 15, ct));
 
-                result.TopMiners = minersByHashrate.Select(mapper.Map<MinerPerformanceStats>).ToArray();
+                result.TopMiners = minersByHashrate.Select(x => x.ToApi()).ToArray();
 
                 return result;
             }).ToArray())
@@ -141,7 +141,7 @@ public class PoolApiController : ApiControllerBase
 
         var response = new GetPoolResponse
         {
-            Pool = pool.ToPoolInfo(mapper, stats, poolInstance)
+            Pool = pool.ToPoolInfo(stats, poolInstance)
         };
 
         // enrich
@@ -171,7 +171,7 @@ public class PoolApiController : ApiControllerBase
         var from = clock.Now.AddHours(-topMinersRange);
 
         response.Pool.TopMiners = (await cf.Run(con => statsRepo.PagePoolMinersByHashrateAsync(con, pool.Id, from, 0, 15, ct)))
-            .Select(mapper.Map<MinerPerformanceStats>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         return response;
@@ -207,7 +207,7 @@ public class PoolApiController : ApiControllerBase
 
         var response = new GetPoolStatsResponse
         {
-            Stats = stats.Select(mapper.Map<AggregatedPoolStats>).ToArray()
+            Stats = stats.Select(x => x.ToApi()).ToArray()
         };
 
         return response;
@@ -225,7 +225,7 @@ public class PoolApiController : ApiControllerBase
         var start = end.AddHours(-topMinersRange);
 
         var miners = (await cf.Run(con => statsRepo.PagePoolMinersByHashrateAsync(con, pool.Id, start, page, pageSize, ct)))
-            .Select(mapper.Map<MinerPerformanceStats>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         return miners;
@@ -243,7 +243,7 @@ public class PoolApiController : ApiControllerBase
             new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
 
         var blocks = (await cf.Run(con => blocksRepo.PageBlocksAsync(con, pool.Id, blockStates, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Block>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich blocks
@@ -284,7 +284,7 @@ public class PoolApiController : ApiControllerBase
         uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
 
         var blocks = (await cf.Run(con => blocksRepo.PageBlocksAsync(con, pool.Id, blockStates, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Block>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich blocks
@@ -320,7 +320,7 @@ public class PoolApiController : ApiControllerBase
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, null, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Payment>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich payments
@@ -353,7 +353,7 @@ public class PoolApiController : ApiControllerBase
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, null, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Payment>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich payments
@@ -395,7 +395,7 @@ public class PoolApiController : ApiControllerBase
 
         if(statsResult != null)
         {
-            stats = mapper.Map<Responses.MinerStats>(statsResult);
+            stats = statsResult.ToApi();
 
             // optional fields
             if(statsResult.LastPayment != null)
@@ -448,7 +448,7 @@ public class PoolApiController : ApiControllerBase
             new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
 
         var blocks = (await cf.Run(con => blocksRepo.PageMinerBlocksAsync(con, pool.Id, address, blockStates, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Block>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich blocks
@@ -495,7 +495,7 @@ public class PoolApiController : ApiControllerBase
         uint pageCount = (uint) Math.Floor(itemCount / (double) pageSize);
 
         var blocks = (await cf.Run(con => blocksRepo.PageMinerBlocksAsync(con, pool.Id, address, blockStates, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Block>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich blocks
@@ -537,7 +537,7 @@ public class PoolApiController : ApiControllerBase
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, address, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Payment>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich payments
@@ -576,7 +576,7 @@ public class PoolApiController : ApiControllerBase
 
         var payments = (await cf.Run(con => paymentsRepo.PagePaymentsAsync(
                 con, pool.Id, address, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.Payment>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         // enrich payments
@@ -613,7 +613,7 @@ public class PoolApiController : ApiControllerBase
 
         var balanceChanges = (await cf.Run(con => paymentsRepo.PageBalanceChangesAsync(
                 con, pool.Id, address, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.BalanceChange>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         return balanceChanges;
@@ -637,7 +637,7 @@ public class PoolApiController : ApiControllerBase
 
         var balanceChanges = (await cf.Run(con => paymentsRepo.PageBalanceChangesAsync(
                 con, pool.Id, address, page, pageSize, ct)))
-            .Select(mapper.Map<Responses.BalanceChange>)
+            .Select(x => x.ToApi())
             .ToArray();
 
         var response = new PagedResultResponse<Responses.BalanceChange[]>(balanceChanges, itemCount, pageCount);
@@ -722,7 +722,7 @@ public class PoolApiController : ApiControllerBase
         if(result == null)
             throw new ApiException("No settings found", HttpStatusCode.NotFound);
 
-        return mapper.Map<Responses.MinerSettings>(result);
+        return result.ToApi();
     }
 
     [HttpPost("{poolId}/miners/{address}/settings")]
@@ -755,7 +755,7 @@ public class PoolApiController : ApiControllerBase
             throw new ApiException("None of the recently used IP addresses matches the request", HttpStatusCode.Forbidden);
 
         // map settings
-        var mapped = mapper.Map<Persistence.Model.MinerSettings>(request.Settings);
+        var mapped = request.Settings.ToModel();
 
         // clamp limit
         if(pool.PaymentProcessing != null)
@@ -772,7 +772,7 @@ public class PoolApiController : ApiControllerBase
             logger.Info(() => $"Updated settings for pool {pool.Id}, miner {address}");
 
             var result = await minerRepo.GetSettingsAsync(con, tx, mapped.PoolId, mapped.Address);
-            return mapper.Map<Responses.MinerSettings>(result);
+            return result.ToApi();
         });
     }
 
@@ -822,7 +822,7 @@ public class PoolApiController : ApiControllerBase
         }
 
         // map
-        var result = mapper.Map<Responses.WorkerPerformanceStatsContainer[]>(stats);
+        var result = stats.ToApi();
         return result;
     }
 }

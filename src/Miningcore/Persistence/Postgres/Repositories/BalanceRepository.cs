@@ -1,5 +1,4 @@
 using System.Data;
-using AutoMapper;
 using Dapper;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
@@ -8,13 +7,6 @@ namespace Miningcore.Persistence.Postgres.Repositories;
 
 public class BalanceRepository : IBalanceRepository
 {
-    public BalanceRepository(IMapper mapper)
-    {
-        this.mapper = mapper;
-    }
-
-    private readonly IMapper mapper;
-
     public async Task<int> AddAmountAsync(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, params string[] tags)
     {
         var now = DateTime.UtcNow;
@@ -94,7 +86,7 @@ public class BalanceRepository : IBalanceRepository
             WHERE b.poolid = @poolId AND b.amount >= COALESCE(ms.paymentthreshold, @minimum)";
 
         return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
-            .Select(mapper.Map<Balance>)
+            .Select(x => x.ToModel())
             .ToArray();
     }
 
@@ -112,7 +104,7 @@ public class BalanceRepository : IBalanceRepository
             ORDER BY created DESC";
 
         return (await con.QueryAsync<Entities.BalanceChange>(query, new { poolId, tag = new[] { tag } }, tx))
-            .Select(mapper.Map<BalanceChange>)
+            .Select(x => x.ToModel())
             .ToArray();
     }
 }

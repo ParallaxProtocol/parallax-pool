@@ -5,7 +5,6 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using Autofac;
-using AutoMapper;
 using Microsoft.IO;
 using Miningcore.Banning;
 using Miningcore.Blockchain;
@@ -36,7 +35,6 @@ public abstract class PoolBase : StratumServer,
         JsonSerializerSettings serializerSettings,
         IConnectionFactory cf,
         IStatsRepository statsRepo,
-        IMapper mapper,
         IMasterClock clock,
         IMessageBus messageBus,
         RecyclableMemoryStreamManager rmsm,
@@ -46,7 +44,6 @@ public abstract class PoolBase : StratumServer,
         Contract.RequiresNonNull(serializerSettings);
         Contract.RequiresNonNull(cf);
         Contract.RequiresNonNull(statsRepo);
-        Contract.RequiresNonNull(mapper);
         Contract.RequiresNonNull(clock);
         Contract.RequiresNonNull(messageBus);
         Contract.RequiresNonNull(nicehashService);
@@ -56,7 +53,6 @@ public abstract class PoolBase : StratumServer,
         blocksRepo = ctx.Resolve<IBlockRepository>();
         shareRepo = ctx.Resolve<IShareRepository>();
         this.statsRepo = statsRepo;
-        this.mapper = mapper;
         this.nicehashService = nicehashService;
     }
 
@@ -66,7 +62,6 @@ public abstract class PoolBase : StratumServer,
     protected readonly IBlockRepository blocksRepo;
     protected readonly IShareRepository shareRepo;
     protected readonly IStatsRepository statsRepo;
-    protected readonly IMapper mapper;
     protected readonly NicehashService nicehashService;
     protected readonly CompositeDisposable disposables = new();
     protected BlockchainStats blockchainStats;
@@ -287,8 +282,8 @@ public abstract class PoolBase : StratumServer,
 
             if(stats != null)
             {
-                poolStats = mapper.Map<PoolStats>(stats);
-                blockchainStats = mapper.Map<BlockchainStats>(stats);
+                poolStats = stats.ToMiningPoolStats();
+                blockchainStats = stats.ToBlockchainStats();
             }
         }
 

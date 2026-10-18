@@ -1,4 +1,3 @@
-using AutoMapper;
 using Miningcore.Api.Responses;
 using Miningcore.Blockchain;
 using Miningcore.Configuration;
@@ -9,12 +8,12 @@ namespace Miningcore.Api.Extensions;
 
 public static class MiningPoolExtensions
 {
-    public static PoolInfo ToPoolInfo(this PoolConfig poolConfig, IMapper mapper, Persistence.Model.PoolStats stats, IMiningPool pool)
+    public static PoolInfo ToPoolInfo(this PoolConfig poolConfig, Persistence.Model.PoolStats stats, IMiningPool pool)
     {
-        var poolInfo = mapper.Map<PoolInfo>(poolConfig);
+        var poolInfo = poolConfig.ToApi();
 
-        poolInfo.PoolStats = mapper.Map<PoolStats>(stats);
-        poolInfo.NetworkStats = pool?.NetworkStats ?? mapper.Map<BlockchainStats>(stats);
+        poolInfo.PoolStats = stats.ToMiningPoolStats();
+        poolInfo.NetworkStats = pool?.NetworkStats ?? stats.ToBlockchainStats();
 
         // pool wallet link
         var addressInfobaseUrl = poolConfig.Template.ExplorerAccountLink;

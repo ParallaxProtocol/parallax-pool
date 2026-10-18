@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.Common;
-using AutoMapper;
 using Miningcore.Configuration;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
@@ -21,7 +20,6 @@ public abstract class PayoutHandlerBase
 {
     protected PayoutHandlerBase(
         IConnectionFactory cf,
-        IMapper mapper,
         IShareRepository shareRepo,
         IBlockRepository blockRepo,
         IBalanceRepository balanceRepo,
@@ -30,7 +28,6 @@ public abstract class PayoutHandlerBase
         IMessageBus messageBus)
     {
         Contract.RequiresNonNull(cf);
-        Contract.RequiresNonNull(mapper);
         Contract.RequiresNonNull(shareRepo);
         Contract.RequiresNonNull(blockRepo);
         Contract.RequiresNonNull(balanceRepo);
@@ -39,7 +36,6 @@ public abstract class PayoutHandlerBase
         Contract.RequiresNonNull(messageBus);
 
         this.cf = cf;
-        this.mapper = mapper;
         this.clock = clock;
         this.shareRepo = shareRepo;
         this.blockRepo = blockRepo;
@@ -53,7 +49,6 @@ public abstract class PayoutHandlerBase
     protected readonly IBalanceRepository balanceRepo;
     protected readonly IBlockRepository blockRepo;
     protected readonly IConnectionFactory cf;
-    protected readonly IMapper mapper;
     protected readonly IPaymentRepository paymentRepo;
     protected readonly IShareRepository shareRepo;
     protected readonly IMasterClock clock;

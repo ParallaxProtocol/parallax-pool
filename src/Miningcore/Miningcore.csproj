@@ -7,6 +7,8 @@
         <ServerGarbageCollection>true</ServerGarbageCollection>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <ImplicitUsings>true</ImplicitUsings>
+        <!-- Mapperly emits nullable-annotated dictionaries; nullable annotations are off in this project -->
+        <NoWarn>$(NoWarn);CS8714</NoWarn>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -32,7 +34,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="NLog.Extensions.Hosting" Version="5.3.8" />
-        <PackageReference Include="AutoMapper" Version="12.0.1" />
+        <PackageReference Include="Riok.Mapperly" Version="4.3.1" />
         <PackageReference Include="Dapper" Version="2.1.35" />
         <PackageReference Include="FluentValidation" Version="11.11.0" />
         <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
