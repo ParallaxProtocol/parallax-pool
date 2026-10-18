@@ -102,7 +102,9 @@ public class PayoutManager : BackgroundService
                 var scheme = ctx.ResolveKeyed<IPayoutScheme>(poolConfig.PaymentProcessing.PayoutScheme);
 
                 await UpdatePoolBalancesAsync(pool, poolConfig, handler, scheme, ct);
-                await PayoutPoolBalancesAsync(pool, poolConfig, handler, ct);
+
+                if(!poolConfig.PaymentProcessing.DirectRewards)
+                    await PayoutPoolBalancesAsync(pool, poolConfig, handler, ct);
             }
 
             catch(InvalidOperationException ex)
@@ -155,6 +157,13 @@ public class PayoutManager : BackgroundService
 
                     switch(block.Status)
                     {
+                        case BlockStatus.Confirmed when poolConfig.PaymentProcessing.DirectRewards:
+                            // the reward already sits at the pool address, there is nothing to distribute.
+                            // Shares only exist to be paid out, so drop the ones that led up to this block
+                            await shareRepo.DeleteSharesBeforeAsync(con, tx, poolConfig.Id, block.Created, ct);
+                            await blockRepo.UpdateBlockAsync(con, tx, block);
+                            break;
+
                         case BlockStatus.Confirmed:
                             // blockchains that do not support block-reward payments via coinbase Tx
                             // must generate balance records for all reward recipients instead

@@ -366,6 +366,13 @@ public partial class PoolPaymentProcessingConfig
     public JToken PayoutSchemeConfig { get; set; }
 
     /// <summary>
+    /// Block rewards are received directly by the pool address (the node's coinbase) and stay there:
+    /// confirmed blocks are tracked, but no balances are credited and no payout transactions are sent.
+    /// Meant for solo mining to your own wallet, where the node needs no unlocked account.
+    /// </summary>
+    public bool DirectRewards { get; set; }
+
+    /// <summary>
     /// Arbitrary extension data
     /// </summary>
     [JsonExtensionData]

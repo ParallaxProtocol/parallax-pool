@@ -551,6 +551,11 @@ public class ParallaxJobManager : JobManagerBase<ParallaxJob>
 
         // extract results
         var netVersion = responses[0].Response.ToObject<string>();
+        var coinbase = responses[2].Response.ToObject<string>();
+
+        // block ownership is decided by the coinbase: blocks mined to any other address are never confirmed
+        if(!string.Equals(coinbase, poolConfig.Address, StringComparison.OrdinalIgnoreCase))
+            throw new PoolStartupException($"The node's coinbase {coinbase} is not the pool address {poolConfig.Address}. Start parallaxd with --miner.coinbase {poolConfig.Address}", poolConfig.Id);
 
         // update stats
         BlockchainStats.RewardType = "POW";

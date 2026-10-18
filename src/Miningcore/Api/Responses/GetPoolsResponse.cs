@@ -54,6 +54,7 @@ public class ApiPoolPaymentProcessingConfig
     public bool Enabled { get; set; }
     public decimal MinimumPayment { get; set; } // in pool-base-currency (ie. LAX, not wei)
     public string PayoutScheme { get; set; }
+    public bool DirectRewards { get; set; }
     public ApiPoolPayoutSchemeConfig PayoutSchemeConfig { get; set; }
 
     [Newtonsoft.Json.JsonExtensionData]
