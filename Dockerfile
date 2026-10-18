@@ -31,4 +31,4 @@ USER app
 
 # 4000: API (+ /notifications websocket), 4073: default stratum port
 EXPOSE 4000 4073
-CMD ["./Miningcore", "-c", "config.json"]
+CMD ["./parallax-pool", "-c", "config.json"]

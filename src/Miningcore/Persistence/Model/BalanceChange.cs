@@ -7,7 +7,7 @@ public record BalanceChange
     public string Address { get; init; }
 
     /// <summary>
-    /// Amount owed in pool-base-currency (ie. Bitcoin, not Satoshis)
+    /// Amount owed in pool-base-currency (ie. LAX, not wei)
     /// </summary>
     public decimal Amount { get; init; }
 

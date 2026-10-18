@@ -2,7 +2,7 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
-        <AssemblyName>Miningcore</AssemblyName>
+        <AssemblyName>parallax-pool</AssemblyName>
         <RootNamespace>Miningcore</RootNamespace>
         <ServerGarbageCollection>true</ServerGarbageCollection>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
