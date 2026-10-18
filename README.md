@@ -105,10 +105,18 @@ Without a config file, the pool is configured from these variables. Only the fir
 | `NODE_WS_PORT` | none | `parallaxd` WebSocket port, for instant new-block notifications |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_NAME` | `127.0.0.1` / `5432` / `pool` / `pool` | PostgreSQL |
 | `POOL_ID` | `lax1` | Pool id used in the API |
+| `SETTINGS_DIR` | none | Lets the web UI set and change the pool address (first-run setup). Only use it where the UI is protected, e.g. behind umbrelOS's login |
 | `LOG_LEVEL` | `info` | `trace`, `debug`, `info`, `warn`, `error` |
 | `NODE_CACHE`, `NODE_P2P_PORT`, `NODE_EXTRA_ARGS` | | Compose only: node cache (MB), P2P port, extra `parallaxd` flags |
 
 Run `docker compose exec pool ./parallax-pool -dc` to print the configuration as the pool understands it.
+
+## umbrelOS
+
+[`deploy/umbrel`](deploy/umbrel) packages the pool as an umbrelOS app: install it, open it, enter
+your LAX address, and point miners at port 4073. The app runs its own Parallax node and pays block
+rewards straight to that address. See [its README](deploy/umbrel/README.md) for publishing it as a
+community app store or submitting it to the Umbrel App Store.
 
 ## Running without Compose
 

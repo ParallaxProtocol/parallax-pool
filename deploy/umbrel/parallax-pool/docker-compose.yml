@@ -1,0 +1,87 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: parallax-pool_pool_1
+      APP_PORT: 4000
+
+  node:
+    image: parallaxprotocol/parallax:2.1.5@sha256:572419359b4eeb2ac156a244d6d1adf59a5e4c0dd80225344149543a2e544010
+    restart: on-failure
+    stop_grace_period: 2m
+    user: "1000:1000"
+    # The node syncs right away; once the reward address is set in the pool's web UI (written to
+    # settings/coinbase), parallaxd is restarted to mine to it, and again whenever it changes.
+    # The RPC only offers the public eth/net/web3 namespaces: no accounts, keys or miner controls.
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        coinbase() { cat /settings/coinbase 2>/dev/null | tr -d '[:space:]'; }
+        trap 'kill -TERM $$pid 2>/dev/null; wait $$pid; exit 0' TERM INT
+        while true; do
+          address=$$(coinbase)
+          mining=""
+          [ -n "$$address" ] && mining="--mine --miner.threads 0 --miner.coinbase $$address"
+          parallaxd --cache 1024 \
+            --http --http.addr 0.0.0.0 --http.vhosts '*' --http.api eth,net,web3 \
+            --ws --ws.addr 0.0.0.0 --ws.origins '*' --ws.api eth,net,web3 \
+            $$mining &
+          pid=$$!
+          while kill -0 $$pid 2>/dev/null && [ "$$(coinbase)" = "$$address" ]; do sleep 5; done
+          if [ "$$(coinbase)" = "$$address" ]; then
+            wait $$pid
+            exit 1
+          fi
+          kill -TERM $$pid
+          wait $$pid
+        done
+    ports:
+      - "32110:32110/tcp"
+      - "32110:32110/udp"
+    volumes:
+      - ${APP_DATA_DIR}/data/node:/home/parallax/.parallax
+      - ${APP_DATA_DIR}/data/settings:/settings:ro
+
+  db:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: pool
+      POSTGRES_PASSWORD: ${APP_PARALLAX_POOL_DB_PASSWORD}
+      POSTGRES_DB: pool
+    volumes:
+      - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pool -d pool"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  pool:
+    image: parallaxprotocol/parallax-pool:0.1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: on-failure
+    stop_grace_period: 30s
+    user: "1000:1000"
+    environment:
+      # the reward address comes from the web UI's first-run setup
+      SETTINGS_DIR: /data/settings
+      PAYOUT_MODE: direct
+      NODE_HOST: parallax-pool_node_1
+      NODE_RPC_PORT: 8545
+      NODE_WS_PORT: 8546
+      DB_HOST: parallax-pool_db_1
+      DB_PASSWORD: ${APP_PARALLAX_POOL_DB_PASSWORD}
+      SHARE_RECOVERY_FILE: /data/recovered-shares.txt
+      STRATUM_PORT: 4073
+    ports:
+      - "4073:4073"
+    volumes:
+      - ${APP_DATA_DIR}/data/pool:/data
+      - ${APP_DATA_DIR}/data/settings:/data/settings
+    depends_on:
+      db:
+        condition: service_healthy
+      node:
+        condition: service_started
