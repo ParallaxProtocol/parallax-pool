@@ -147,15 +147,42 @@ file instead of environment variables: start from
 [`config.schema.json`](src/Miningcore/config.schema.json) lists every option. Set
 `paymentProcessing.directRewards` to `true` for direct rewards.
 
+### Tests
+
+Everything runs in Docker:
+
+```bash
+make test         # unit tests, as CI runs them
+make e2e          # private-chain end-to-end test: shared pool, PPLNS payouts
+make e2e-direct   # the same with direct rewards
+```
+
+The end-to-end test ([`tests/e2e/run.sh`](tests/e2e/run.sh)) builds the pool image from your
+checkout and starts two peered Parallax nodes on a private chain (low, fixed difficulty), PostgreSQL,
+the pool, and CPU miners for two addresses. It runs until blocks have passed the 100-block lockbox,
+which takes a few minutes, then checks the results against the chain:
+- Every share is accepted and the blocks confirm.
+- In pool mode: the payout transactions are mined, and each miner's on-chain balance equals what the
+  API says it was paid.
+- In direct mode: no payouts are sent, and the rewards arrive at the pool address.
+
+`KEEP=1 make e2e` leaves it running, with the web UI on http://127.0.0.1:14000.
+
 ### Web interface development
 
 The interface lives in [`ui/`](ui) (React, Vite, TypeScript) and is built into the Docker image,
-where the pool serves it next to the API. To work on it against a running pool:
+where the pool serves it next to the API. To work on it:
 
 ```bash
-cd ui && npm ci
-POOL_API=http://localhost:4000 npm run dev
+make dev          # or make dev-direct
 ```
+
+This starts the same private chain, pool and database as `make e2e`, with miners that keep going,
+so blocks, maturing rewards and payouts happen live. The UI runs under Vite with hot reload on
+http://127.0.0.1:5173, and Ctrl+C stops everything. Only Docker is needed.
+
+To run the UI against another pool instead:
+`cd ui && npm ci && POOL_API=http://localhost:4000 npm run dev`.
 
 ### Node setup
 
