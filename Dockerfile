@@ -1,16 +1,34 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0-jammy as BUILDER
-WORKDIR /app
-RUN apt-get update && \
-    apt-get -y install cmake clang ninja-build build-essential libssl-dev pkg-config libboost-all-dev libsodium-dev libzmq5 libzmq3-dev golang-go libgmp-dev libc++-dev zlib1g-dev
-COPY . .
-WORKDIR /app/src/Miningcore
-RUN dotnet publish -c Release --framework net6.0 -o ../../build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0-jammy
-WORKDIR /app
 RUN apt-get update && \
-    apt-get install -y libzmq5 libzmq3-dev libsodium-dev curl && \
-    apt-get clean
-EXPOSE  4000-4090
-COPY --from=BUILDER /app/build ./
-CMD ["./Miningcore", "-c", "config.json" ]
+    apt-get -y install --no-install-recommends make g++ && \
+    rm -rf /var/lib/apt/lists/*
+
+# GitVersion needs the .git directory, which is not part of the build context:
+# the version comes from the build argument instead (set by CI from the release tag)
+ARG VERSION=0.0.0-dev
+
+WORKDIR /src
+COPY . .
+RUN cd src/Miningcore && \
+    dotnet publish -c Release -o /build -p:DisableGitVersionTask=true -p:Version=$VERSION
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+
+# libzmq5: share relays (ZeroMQ); curl: container health checks
+RUN apt-get update && \
+    apt-get -y install --no-install-recommends libzmq5 curl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Kestrel endpoints come from the pool config (api.listenAddress / api.port)
+ENV ASPNETCORE_HTTP_PORTS=
+
+COPY --from=builder /build ./
+
+USER app
+
+# 4000: API (+ /notifications websocket), 4073: default stratum port
+EXPOSE 4000 4073
+CMD ["./Miningcore", "-c", "config.json"]

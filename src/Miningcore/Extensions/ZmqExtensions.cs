@@ -31,11 +31,8 @@ public static class ZmqExtensions
 
     private static byte[] DeriveKey(string password, int length = 32)
     {
-        using(var kbd = new Rfc2898DeriveBytes(Encoding.UTF8.GetBytes(password), noSalt, PasswordIterations))
-        {
-            var block = kbd.GetBytes(length);
-            return block;
-        }
+        // PBKDF2-HMAC-SHA1, identical to the legacy Rfc2898DeriveBytes defaults so keys stay interoperable
+        return Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), noSalt, PasswordIterations, HashAlgorithmName.SHA1, length);
     }
 
     private static long monitorSocketIndex = 0;
