@@ -135,6 +135,17 @@ public class ParallaxJobTests : TestBase
         Assert.Equal(valid, ParallaxJob.TryParseNonce(hex, out _));
     }
 
+    [Fact]
+    public async Task Block_Candidate_Records_Its_Nonce()
+    {
+        var job = CreateJob(ResultValue);
+
+        var result = await job.ProcessShareAsync(CreateWorker(1e-12), "rig1", "307692CF71B12F6D", string.Empty, CancellationToken.None);
+
+        // normalised, so it compares equal to the nonce the node reports for the block
+        Assert.Equal("0x" + Nonce, result.Share.TransactionConfirmationData);
+    }
+
     [Theory]
     [InlineData(1ul, 50)]
     [InlineData(209999ul, 50)]

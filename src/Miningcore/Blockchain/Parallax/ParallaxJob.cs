@@ -117,7 +117,9 @@ public class ParallaxJob
             var headerHash = BlockTemplate.Header;
             var mixHash = mixDigest.ToHexString(true);
 
-            share.TransactionConfirmationData = "";
+            // the nonce tells this block apart from another solution at the same height,
+            // see ParallaxPayoutHandler.ClassifyBlocksAsync
+            share.TransactionConfirmationData = fullNonceHex;
 
             return new SubmitResult(share, fullNonceHex, headerHash, mixHash);
         }

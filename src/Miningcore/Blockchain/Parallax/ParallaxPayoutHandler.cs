@@ -129,27 +129,35 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
                     // mature? (the on-chain lockbox credits the coinbase only after MinConfirmations blocks)
                     if(latestBlockHeight - block.BlockHeight >= ParallaxConstants.MinConfirmations)
                     {
-                        // Parallax has no uncles. If the pool recorded multiple candidate blocks at the
-                        // same height (e.g. after a chain reorg), only the newest record can correspond
-                        // to the canonical chain block - older duplicates are orphans.
-                        var totalDuplicateBlock = await cf.Run(con => blockRepo.GetPoolDuplicateBlockCountByPoolHeightNoTypeAndStatusAsync(con, poolConfig.Id, Convert.ToInt64(block.BlockHeight), new[]
-                        {
-                            block.Status
-                        }));
+                        // Parallax has no uncles: when the pool found more than one block at this height
+                        // (two miners solving the same job), only one of them is on the chain.
+                        // Blocks record their nonce, so the one on the chain is known for certain;
+                        // older records without a nonce fall back to keeping the newest duplicate.
+                        var onChain = IsBlockOnChain(block, blockInfo);
 
-                        uint totalDuplicateBlockAfter = 0;
-
-                        if(totalDuplicateBlock > 1)
+                        if(onChain == null)
                         {
-                            totalDuplicateBlockAfter = await cf.Run(con => blockRepo.GetPoolDuplicateBlockAfterCountByPoolHeightNoTypeAndStatusAsync(con, poolConfig.Id, Convert.ToInt64(block.BlockHeight), new[]
+                            var totalDuplicateBlock = await cf.Run(con => blockRepo.GetPoolDuplicateBlockCountByPoolHeightNoTypeAndStatusAsync(con, poolConfig.Id, Convert.ToInt64(block.BlockHeight), new[]
                             {
                                 block.Status
-                            }, block.Created));
+                            }));
+
+                            uint totalDuplicateBlockAfter = 0;
+
+                            if(totalDuplicateBlock > 1)
+                            {
+                                totalDuplicateBlockAfter = await cf.Run(con => blockRepo.GetPoolDuplicateBlockAfterCountByPoolHeightNoTypeAndStatusAsync(con, poolConfig.Id, Convert.ToInt64(block.BlockHeight), new[]
+                                {
+                                    block.Status
+                                }, block.Created));
+                            }
+
+                            onChain = !(totalDuplicateBlock > 1 && totalDuplicateBlockAfter > 0);
                         }
 
-                        if(totalDuplicateBlock > 1 && totalDuplicateBlockAfter > 0)
+                        if(onChain == false)
                         {
-                            logger.Info(() => $"[{LogCategory}] Got {totalDuplicateBlock} `{block.Status}` blocks with the same blockHeight: {block.BlockHeight}. Orphaning the older duplicate");
+                            logger.Info(() => $"[{LogCategory}] Block {block.BlockHeight} found by {block.Miner} lost to another solution at the same height");
 
                             block.Hash = "0x0";
                             block.Status = BlockStatus.Orphaned;
@@ -167,7 +175,7 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
 
                             var blockMiner = blockHashResponse.Response.Miner;
 
-                            if(IsPoolCoinbase(blockMiner))
+                            if(IsPoolCoinbase(blockMiner) && IsBlockOnChain(block, blockHashResponse.Response) != false)
                             {
                                 block.Hash = blockHashResponse.Response.Hash;
                                 block.Status = BlockStatus.Confirmed;
@@ -259,6 +267,20 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
     {
         return string.Equals(miner, poolConfig.Address, StringComparison.OrdinalIgnoreCase) ||
             previousAddresses.Any(x => string.Equals(miner, x, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether the pool's record of a block is the block on the chain at its height, by nonce.
+    /// Null for records that predate storing the nonce.
+    /// </summary>
+    internal static bool? IsBlockOnChain(Block block, DaemonResponses.Block chainBlock)
+    {
+        var nonce = block.TransactionConfirmationData;
+
+        if(string.IsNullOrEmpty(nonce) || !nonce.StartsWith("0x"))
+            return null;
+
+        return string.Equals(nonce, chainBlock.Nonce, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<bool> EnsureDaemonsSynchedAsync(CancellationToken ct)
