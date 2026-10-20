@@ -24,7 +24,8 @@ public class IPAccessWhitelistMiddleware
 
     public async Task Invoke(HttpContext context)
     {
-        if(locations.Any(x => context.Request.Path.Value.StartsWith(x)))
+        // routing ignores case, so must this: /Api/Admin reaches the same controllers as /api/admin
+        if(locations.Any(x => context.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase)))
         {
             var remoteAddress = context.Connection.RemoteIpAddress;
             if(!whitelist.Any(x => x.Equals(remoteAddress)))
