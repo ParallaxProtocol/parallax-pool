@@ -1,11 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // `npm run dev` proxies the API of a pool running on localhost:4000 (override with POOL_API)
 const api = process.env.POOL_API ?? "http://localhost:4000";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     proxy: {
       "/api": api,

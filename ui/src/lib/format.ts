@@ -65,7 +65,7 @@ export function formatDuration(seconds: number): string {
     return "–";
 
   if(seconds < 60)
-    return `${Math.round(seconds)} s`;
+    return `${Math.max(1, Math.round(seconds))} s`;
 
   if(seconds < 3600)
     return `${Math.round(seconds / 60)} min`;
@@ -110,3 +110,13 @@ export function shortAddress(address: string | null | undefined): string {
 }
 
 export const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+
+/** elapsed seconds as a clock: "6:12", "1:02:03" */
+export function formatClock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const h = Math.floor(s / 3600);
+  const min = Math.floor((s % 3600) / 60);
+
+  return h ? `${h}:${pad(min)}:${pad(s % 60)}` : `${min}:${pad(s % 60)}`;
+}
