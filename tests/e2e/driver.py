@@ -203,6 +203,9 @@ def main():
             paid = {a: sum((p["amount"] for p in payments if p["address"].lower() == a), Decimal(0)) for a in MINERS}
             if not all(paid.values()):
                 continue
+            # the pool records a payout when it sends the transaction: keep mining until it's in a block
+            if any(rpc(NODE1, "eth_getTransactionReceipt", [p["transactionConfirmationData"]]) is None for p in payments):
+                continue
             stop.set()
             return check_pool_mode(blocks, payments, paid, balances_before)
 
@@ -233,10 +236,22 @@ def check_common(blocks):
 def check_pool_mode(blocks, payments, paid, balances_before):
     check_common(blocks)
 
+    # mining has stopped, so the chain is frozen: compare against exactly the payouts in it
+    # (one sent in the last moment is still pending and can't have moved any balance)
+    time.sleep(3)
+    payments = api("/api/pools/lax1/payments?pageSize=500")[1]
+    mined = []
+
     for p in payments:
         receipt = rpc(NODE1, "eth_getTransactionReceipt", [p["transactionConfirmationData"]])
-        if not receipt or receipt["status"] != "0x1":
-            fail(f"payment {p['transactionConfirmationData']} is not mined successfully")
+        if receipt is None:
+            continue
+        if receipt["status"] != "0x1":
+            fail(f"payment {p['transactionConfirmationData']} failed on-chain")
+        mined.append(p)
+
+    paid = {a: sum((p["amount"] for p in mined if p["address"].lower() == a), Decimal(0)) for a in MINERS}
+    payments = mined
 
     for address in MINERS:
         received = int(rpc(NODE1, "eth_getBalance", [address, "latest"]), 16) - balances_before[address]
