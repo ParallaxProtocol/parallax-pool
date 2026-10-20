@@ -60,7 +60,7 @@ services:
       retries: 12
 
   pool:
-    image: parallaxprotocol/parallax-pool:0.1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    image: parallaxprotocol/parallax-pool:0.1.0@sha256:d76ba2894112558b0457b554b6419704246d9c0fab6291b15b92f8ae6a02ccaa
     restart: on-failure
     stop_grace_period: 30s
     user: "1000:1000"
