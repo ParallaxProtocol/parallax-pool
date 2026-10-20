@@ -72,7 +72,7 @@ function Shell() {
     view = "setup";
     content = <SetupPage />;
   }
-  else if(path === "/settings" && setup?.enabled) {
+  else if(path === "/settings" && setup?.enabled && setup.canChange) {
     view = path;
     content = <SettingsPage setup={setup} />;
   }
@@ -110,7 +110,7 @@ function Shell() {
 
   const nav = [["/", "Overview"], ["/blocks", "Blocks"], ["/payments", "Payments"], ["/connect", "Connect"]];
 
-  if(setup?.enabled && setup.configured)
+  if(setup?.enabled && setup.configured && setup.canChange)
     nav.push(["/settings", "Settings"]);
 
   return (

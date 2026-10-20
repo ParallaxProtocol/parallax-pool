@@ -669,6 +669,12 @@ public partial class ClusterConfig
     /// </summary>
     public string SettingsDirectory { get; set; }
 
+    /// <summary>
+    /// Lets the web UI change the pool address after the first-run setup. Off by default: the setup
+    /// API has no authentication, so only turn it on where the web UI is protected.
+    /// </summary>
+    public bool AllowSettingsChanges { get; set; }
+
     [Required]
     public PoolConfig[] Pools { get; set; }
 }

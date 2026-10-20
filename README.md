@@ -105,7 +105,8 @@ Without a config file, the pool is configured from these variables. Only the fir
 | `NODE_WS_PORT` | none | `parallaxd` WebSocket port, for instant new-block notifications |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_NAME` | `127.0.0.1` / `5432` / `pool` / `pool` | PostgreSQL |
 | `POOL_ID` | `lax1` | Pool id used in the API |
-| `SETTINGS_DIR` | none | Lets the web UI set and change the pool address (first-run setup). Only use it where the UI is protected, e.g. behind an authenticating reverse proxy |
+| `SETTINGS_DIR` | none | Lets the web UI set the pool address once (first-run setup), while none is set. Until then, anyone who can reach the API can set it |
+| `SETTINGS_ALLOW_CHANGES` | `false` | With `SETTINGS_DIR`: also lets the web UI change the address later. The setup API has no authentication, so only turn this on where the UI is protected, e.g. behind an authenticating reverse proxy, or just for as long as it takes to make a change |
 | `LOG_LEVEL` | `info` | `trace`, `debug`, `info`, `warn`, `error` |
 | `NODE_VERSION` | `2.1.5` | Compose only: version of the `parallaxprotocol/parallax` node image |
 | `POOL_IMAGE` | `parallaxprotocol/parallax-pool:latest` | Compose only: pool image, e.g. `parallaxprotocol/parallax-pool:0.1.0` to stay on a release |

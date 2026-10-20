@@ -155,6 +155,8 @@ export type PoolEvent =
 export interface SetupStatus {
   enabled: boolean;
   configured: boolean;
+  /** Whether the address can be set or changed here (after the first run, only where the deployment allows it) */
+  canChange: boolean;
   address?: string | null;
   previousAddresses: string[];
 }

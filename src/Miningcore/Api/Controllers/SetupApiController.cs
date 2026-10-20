@@ -9,8 +9,9 @@ namespace Miningcore.Api.Controllers;
 
 /// <summary>
 /// First-run setup from the web UI. Only active when a settings directory is configured
-/// (SETTINGS_DIR), which deployments should only do where the UI is protected, e.g. behind an
-/// authenticating reverse proxy.
+/// (SETTINGS_DIR). It sets the address once; changing it later also needs AllowSettingsChanges
+/// (SETTINGS_ALLOW_CHANGES), which deployments should only turn on where the UI is protected,
+/// e.g. behind an authenticating reverse proxy.
 /// </summary>
 [Route("api/setup")]
 [ApiController]
@@ -29,7 +30,7 @@ public class SetupApiController : ApiControllerBase
     /// </summary>
     public const int RestartExitCode = 3;
 
-    public record SetupStatus(bool Enabled, bool Configured, string Address, string[] PreviousAddresses);
+    public record SetupStatus(bool Enabled, bool Configured, bool CanChange, string Address, string[] PreviousAddresses);
 
     public record SetupRequest(string Address);
 
@@ -37,10 +38,10 @@ public class SetupApiController : ApiControllerBase
     public SetupStatus Get()
     {
         if(string.IsNullOrEmpty(clusterConfig.SettingsDirectory))
-            return new SetupStatus(false, clusterConfig.Pools.Any(x => x.Enabled), null, Array.Empty<string>());
+            return new SetupStatus(false, clusterConfig.Pools.Any(x => x.Enabled), false, null, Array.Empty<string>());
 
         var settings = PoolSettings.Load(clusterConfig.SettingsDirectory);
-        return new SetupStatus(true, !string.IsNullOrEmpty(settings.Address), settings.Address, settings.PreviousAddresses);
+        return Status(settings);
     }
 
     /// <summary>
@@ -58,6 +59,12 @@ public class SetupApiController : ApiControllerBase
             throw new ApiException("Enter a LAX address: 0x followed by 40 hex characters", HttpStatusCode.BadRequest);
 
         var current = PoolSettings.Load(clusterConfig.SettingsDirectory);
+
+        // anyone who can reach the API can do the first-run setup, so once there is an address
+        // only a deployment that protects the UI may let it be changed
+        if(IsConfigured(current) && !clusterConfig.AllowSettingsChanges)
+            throw new ApiException("Changing the pool address from the web UI is turned off on this pool", HttpStatusCode.Forbidden);
+
         var updated = current.WithAddress(address);
 
         if(!ReferenceEquals(updated, current))
@@ -74,6 +81,18 @@ public class SetupApiController : ApiControllerBase
             });
         }
 
-        return new SetupStatus(true, true, updated.Address, updated.PreviousAddresses);
+        return Status(updated);
+    }
+
+    // an address set with POOL_ADDRESS counts too: the pool is already mining to it
+    private bool IsConfigured(PoolSettings settings) =>
+        !string.IsNullOrEmpty(settings.Address) || clusterConfig.Pools.Any(x => x.Enabled);
+
+    private SetupStatus Status(PoolSettings settings)
+    {
+        var configured = IsConfigured(settings);
+        var address = settings.Address ?? clusterConfig.Pools.FirstOrDefault(x => x.Enabled)?.Address;
+
+        return new SetupStatus(true, configured, !configured || clusterConfig.AllowSettingsChanges, address, settings.PreviousAddresses);
     }
 }

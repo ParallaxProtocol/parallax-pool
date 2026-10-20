@@ -211,6 +211,7 @@ public static class EnvironmentConfig
                     : new JObject { ["disabled"] = true },
             },
             ["settingsDirectory"] = settingsDir,
+            ["allowSettingsChanges"] = Bool("SETTINGS_ALLOW_CHANGES", false),
             // without an address the pool waits for the web UI's first-run setup
             ["pools"] = address != null ? new JArray(pool) : new JArray(),
         };
