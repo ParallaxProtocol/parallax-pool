@@ -728,8 +728,11 @@ public class PoolApiController : ApiControllerBase
         if(request?.Settings == null)
             throw new ApiException("Invalid or missing settings", HttpStatusCode.BadRequest);
 
-        if(!IPAddress.TryParse(request.IpAddress, out var requestIp))
-            throw new ApiException("Invalid IP address", HttpStatusCode.BadRequest);
+        // the caller proves it is the miner by connecting from an address the miner mines from
+        var requestIp = HttpContext.Connection.RemoteIpAddress;
+
+        if(requestIp == null)
+            throw new ApiException("Unknown client address", HttpStatusCode.Forbidden);
 
         // fetch recent IPs
         var ips = await cf.Run(con => shareRepo.GetRecentyUsedIpAddressesAsync(con, null, poolId, address, ct));
@@ -747,7 +750,7 @@ public class PoolApiController : ApiControllerBase
 
         // clamp limit
         if(pool.PaymentProcessing != null)
-            mapped.PaymentThreshold = Math.Max(mapped.PaymentThreshold, pool.PaymentProcessing.MinimumPayment);
+            mapped.PaymentThreshold = ClampPaymentThreshold(mapped.PaymentThreshold, pool.PaymentProcessing.MinimumPayment);
 
         mapped.PoolId = pool.Id;
         mapped.Address = address;
@@ -765,6 +768,16 @@ public class PoolApiController : ApiControllerBase
     }
 
     #endregion // Actions
+
+    /// <summary>
+    /// A miner's payout threshold may be raised up to this many times the pool's minimum payment
+    /// </summary>
+    public const decimal MaxPaymentThresholdFactor = 1000;
+
+    internal static decimal ClampPaymentThreshold(decimal threshold, decimal minimumPayment) =>
+        minimumPayment > 0
+            ? Math.Clamp(threshold, minimumPayment, minimumPayment * MaxPaymentThresholdFactor)
+            : Math.Max(threshold, minimumPayment);
 
     private async Task<Responses.WorkerPerformanceStatsContainer[]> GetMinerPerformanceInternal(
         SampleRange mode, PoolConfig pool, string address, CancellationToken ct)

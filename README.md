@@ -208,6 +208,7 @@ hashwarp -P stratum2+tcp://<LAX_ADDRESS>.<worker>@<pool-host>:4073
 | `GET /api/pools` | All pools with network and pool stats |
 | `GET /api/pools/{id}/blocks` | Blocks found, with confirmation progress |
 | `GET /api/pools/{id}/payments` | Payouts |
+| `POST /api/pools/{id}/miners/{address}/settings` | Sets a miner's payout threshold (`{"settings": {"paymentThreshold": 5}}`), between `MINIMUM_PAYMENT` and 1,000 × `MINIMUM_PAYMENT`. Only accepted from an IP address the miner has recently mined from |
 | `GET /api/pools/{id}/miners/{address}` | Miner balance, hashrate and workers |
 | `ws://<host>:4000/notifications` | Live events: block found, block unlocked, payment, hashrate |
 
