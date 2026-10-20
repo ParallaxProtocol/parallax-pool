@@ -79,6 +79,10 @@ together they control the pool's funds.
 
 How payouts work:
 
+- **PPLNS window.** A block's reward is shared among the last `PPLNS_FACTOR` × network difficulty
+  worth of shares. If the pool hasn't collected that many shares yet (for example a lucky first
+  block), the miners get the matching fraction of the reward and the rest stays at `POOL_ADDRESS`.
+  This is standard PPLNS, and later blocks don't pay it out.
 - **Payment status.** A payout comes off the miner's balance *before* the pool sends it, so it can
   never be sent twice. It is `sending` until the node returns a transaction hash, then `pending`, and
   `confirmed` six blocks after it is mined. A transaction that fails on-chain, or that the node
