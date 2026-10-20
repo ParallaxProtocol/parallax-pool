@@ -36,8 +36,8 @@ docker compose logs -f pool
 
 The pool waits for the node to sync (about a minute on mainnet today), then accepts miners on port
 4073. The API is on port 4000. The node's RPC and the database are not exposed outside the compose
-project. Until release images are published, the first `up` reports that it can't pull
-`parallaxprotocol/parallax-pool` and builds it locally instead.
+project. Compose pulls the published `parallaxprotocol/parallax-pool` image; `docker compose up -d
+--build` builds it from your checkout instead.
 
 Open `http://<this-host>:4000` for the web interface:
 - **Overview:** the pool's hashrate, how often it can expect a block, and the last 100 blocks of
