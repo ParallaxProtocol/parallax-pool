@@ -19,7 +19,7 @@ public class ParallaxJob
         blockTarget = new BigInteger(blockTemplate.Target.HexToReverseByteArray(), true);
     }
 
-    protected Dictionary<string, HashSet<string>> workerNonces = new();
+    protected Dictionary<string, HashSet<ulong>> workerNonces = new();
 
     public string Id { get; }
     public ParallaxBlockTemplate BlockTemplate { get; }
@@ -29,38 +29,43 @@ public class ParallaxJob
 
     public record SubmitResult(Share Share, string FullNonceHex = null, string HeaderHash = null, string MixHash = null);
 
-    protected void RegisterNonce(StratumConnection worker, string nonce)
+    protected void RegisterNonce(StratumConnection worker, ulong nonce)
     {
-        var nonceLower = nonce.ToLower();
-
         if(!workerNonces.TryGetValue(worker.ConnectionId, out var nonces))
         {
-            nonces = new HashSet<string>(new[] { nonceLower });
+            nonces = new HashSet<ulong>();
             workerNonces[worker.ConnectionId] = nonces;
         }
 
-        else
-        {
-            if(nonces.Contains(nonceLower))
-                throw new StratumException(StratumError.MinusOne, "duplicate share");
+        if(!nonces.Add(nonce))
+            throw new StratumException(StratumError.MinusOne, "duplicate share");
+    }
 
-            nonces.Add(nonceLower);
-        }
+    /// <summary>
+    /// Parses a nonce of exactly 16 hex digits. Anything looser (whitespace, padding, a prefix)
+    /// would let the same nonce be spelled differently and get past the duplicate check
+    /// </summary>
+    internal static bool TryParseNonce(string hex, out ulong nonce)
+    {
+        nonce = 0;
+
+        return hex?.Length == 16 && hex.All(Uri.IsHexDigit) &&
+            ulong.TryParse(hex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out nonce);
     }
 
     public virtual async Task<SubmitResult> ProcessShareAsync(StratumConnection worker,
         string workerName, string fullNonceHex, string solution, CancellationToken ct)
     {
+        if(!TryParseNonce(fullNonceHex, out var fullNonce))
+            throw new StratumException(StratumError.MinusOne, "bad nonce " + fullNonceHex);
+
         // dupe check
         lock(workerNonces)
         {
-            RegisterNonce(worker, fullNonceHex);
+            RegisterNonce(worker, fullNonce);
         }
 
         var context = worker.ContextAs<ParallaxWorkerContext>();
-
-        if(!ulong.TryParse(fullNonceHex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var fullNonce))
-            throw new StratumException(StratumError.MinusOne, "bad nonce " + fullNonceHex);
 
         // get dag/light cache for block
         var cache = await xhash.GetCacheAsync(logger, BlockTemplate.Height, ct);
@@ -108,7 +113,7 @@ public class ParallaxJob
 
         if(share.IsBlockCandidate)
         {
-            fullNonceHex = "0x" + fullNonceHex;
+            fullNonceHex = "0x" + fullNonce.ToString("x16");
             var headerHash = BlockTemplate.Header;
             var mixHash = mixDigest.ToHexString(true);
 

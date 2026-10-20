@@ -102,6 +102,39 @@ public class ParallaxJobTests : TestBase
         Assert.Contains("duplicate", ex.Message);
     }
 
+    // the same nonce spelled differently must not count as a new share
+    [Theory]
+    [InlineData(Nonce + " ")]
+    [InlineData(Nonce + "\t")]
+    [InlineData(Nonce + "\0")]
+    [InlineData(" " + Nonce)]
+    [InlineData("0" + Nonce)]
+    [InlineData("307692CF71B12F6D")]
+    public async Task Resubmitted_Nonce_In_Another_Spelling_Is_Rejected(string variant)
+    {
+        var job = CreateJob(ResultValue - 1);
+        var worker = CreateWorker(1e-12);
+
+        await job.ProcessShareAsync(worker, "rig1", Nonce, string.Empty, CancellationToken.None);
+
+        await Assert.ThrowsAsync<StratumException>(() =>
+            job.ProcessShareAsync(worker, "rig1", variant, string.Empty, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(Nonce, true)]
+    [InlineData("307692CF71B12F6D", true)]
+    [InlineData(Nonce + " ", false)]
+    [InlineData("0x" + Nonce, false)]
+    [InlineData("07692cf71b12f6d", false)]
+    [InlineData("307692cf71b12f6g", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void Nonce_Must_Be_Exactly_16_Hex_Digits(string hex, bool valid)
+    {
+        Assert.Equal(valid, ParallaxJob.TryParseNonce(hex, out _));
+    }
+
     [Theory]
     [InlineData(1ul, 50)]
     [InlineData(209999ul, 50)]
