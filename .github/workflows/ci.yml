@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # docker/build-push-action uploads a build record artifact by default
+  DOCKER_BUILD_RECORD_UPLOAD: false
+
 jobs:
   test:
     name: Test (${{ matrix.arch }})

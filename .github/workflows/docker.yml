@@ -11,6 +11,8 @@ permissions:
 
 env:
   IMAGE: parallaxprotocol/parallax-pool
+  # docker/build-push-action uploads a build record artifact by default
+  DOCKER_BUILD_RECORD_UPLOAD: false
 
 jobs:
   publish:
