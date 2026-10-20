@@ -107,6 +107,8 @@ Without a config file, the pool is configured from these variables. Only the fir
 | `POOL_ID` | `lax1` | Pool id used in the API |
 | `SETTINGS_DIR` | none | Lets the web UI set and change the pool address (first-run setup). Only use it where the UI is protected, e.g. behind an authenticating reverse proxy |
 | `LOG_LEVEL` | `info` | `trace`, `debug`, `info`, `warn`, `error` |
+| `NODE_VERSION` | `2.1.5` | Compose only: version of the `parallaxprotocol/parallax` node image |
+| `POOL_IMAGE` | `parallaxprotocol/parallax-pool:latest` | Compose only: pool image, e.g. `parallaxprotocol/parallax-pool:0.1.0` to stay on a release |
 | `NODE_CACHE`, `NODE_P2P_PORT`, `NODE_EXTRA_ARGS` | | Compose only: node cache (MB), P2P port, extra `parallaxd` flags |
 
 Run `docker compose exec pool ./parallax-pool -dc` to print the configuration as the pool understands it.
