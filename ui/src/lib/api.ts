@@ -151,7 +151,7 @@ export type PoolEvent =
   | { type: "payment"; poolId: string; amount: number; recipientsCount: number; error?: string | null }
   | { type: "hashrateupdated"; poolId: string; hashrate: number; miner?: string | null; worker?: string | null };
 
-/** First-run setup (only enabled where the deployment protects the UI, e.g. umbrelOS) */
+/** First-run setup (only enabled where the deployment protects the UI, e.g. behind an authenticating proxy) */
 export interface SetupStatus {
   enabled: boolean;
   configured: boolean;

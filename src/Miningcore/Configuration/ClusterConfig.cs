@@ -665,7 +665,7 @@ public partial class ClusterConfig
 
     /// <summary>
     /// Directory for settings made in the web UI (first-run setup). Enables the setup API, so only
-    /// set it where the web UI is protected, e.g. behind umbrelOS's login.
+    /// set it where the web UI is protected, e.g. behind an authenticating reverse proxy.
     /// </summary>
     public string SettingsDirectory { get; set; }
 

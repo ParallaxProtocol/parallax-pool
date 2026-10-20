@@ -9,7 +9,8 @@ namespace Miningcore.Api.Controllers;
 
 /// <summary>
 /// First-run setup from the web UI. Only active when a settings directory is configured
-/// (SETTINGS_DIR), which deployments do where the UI is protected, such as umbrelOS.
+/// (SETTINGS_DIR), which deployments should only do where the UI is protected, e.g. behind an
+/// authenticating reverse proxy.
 /// </summary>
 [Route("api/setup")]
 [ApiController]
