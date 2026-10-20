@@ -8,5 +8,6 @@ public record Payment
     public string Address { get; init; }
     public decimal Amount { get; init; }
     public string TransactionConfirmationData { get; init; }
+    public PaymentStatus Status { get; init; }
     public DateTime Created { get; init; }
 }

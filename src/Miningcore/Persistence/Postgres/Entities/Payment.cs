@@ -8,5 +8,6 @@ public class Payment
     public string Address { get; set; }
     public decimal Amount { get; set; }
     public string TransactionConfirmationData { get; set; }
+    public string Status { get; set; }
     public DateTime Created { get; set; }
 }

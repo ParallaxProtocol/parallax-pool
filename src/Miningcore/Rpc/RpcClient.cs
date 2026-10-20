@@ -56,6 +56,11 @@ public class RpcClient
 
     #region API-Surface
 
+    /// <summary>
+    /// Error code of responses that never came from the node: the request failed, timed out or was cancelled
+    /// </summary>
+    public const int NoResponseErrorCode = -500;
+
     public async Task<RpcResponse<TResponse>> ExecuteAsync<TResponse>(ILogger logger, string method, CancellationToken ct,
         object payload = null, bool throwOnError = false)
         where TResponse : class
@@ -74,7 +79,7 @@ public class RpcClient
 
         catch(TaskCanceledException)
         {
-            return new RpcResponse<TResponse>(null, new JsonRpcError(-500, "Cancelled", null));
+            return new RpcResponse<TResponse>(null, new JsonRpcError(NoResponseErrorCode, "Cancelled", null));
         }
 
         catch(Exception ex)
@@ -82,7 +87,7 @@ public class RpcClient
             if(throwOnError)
                 throw;
 
-            return new RpcResponse<TResponse>(null, new JsonRpcError(-500, ex.Message, null, ex));
+            return new RpcResponse<TResponse>(null, new JsonRpcError(NoResponseErrorCode, ex.Message, null, ex));
         }
     }
 
@@ -106,7 +111,7 @@ public class RpcClient
 
         catch(Exception ex)
         {
-            return Enumerable.Repeat(new RpcResponse<JToken>(null, new JsonRpcError(-500, ex.Message, null, ex)), batch.Length).ToArray();
+            return Enumerable.Repeat(new RpcResponse<JToken>(null, new JsonRpcError(NoResponseErrorCode, ex.Message, null, ex)), batch.Length).ToArray();
         }
     }
 

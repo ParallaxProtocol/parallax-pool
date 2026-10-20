@@ -77,6 +77,26 @@ NODE_EXTRA_ARGS=--unlock <POOL_ADDRESS> --password /home/parallax/.parallax/pool
 in `.env`, and run `docker compose up -d` again. Back up the `keystore` directory and the password:
 together they control the pool's funds.
 
+How payouts work:
+
+- **Payment status.** A payout comes off the miner's balance *before* the pool sends it, so it can
+  never be sent twice. It is `sending` until the node returns a transaction hash, then `pending`, and
+  `confirmed` six blocks after it is mined. A transaction that fails on-chain, or that the node
+  refuses to send, goes back on the balance.
+- **A payment stuck in `sending`** means the node didn't answer (it may have sent the transaction or
+  not). The pool leaves it alone and logs a warning every cycle. Look on the node for a transaction
+  from `POOL_ADDRESS` to that miner, then resolve the payment in the database:
+
+  ```sql
+  -- it was sent: record the transaction, and the pool confirms it from there
+  UPDATE payments SET status = 'pending', transactionconfirmationdata = '<tx hash>' WHERE id = <id>;
+
+  -- it was not sent: put the amount back on the balance
+  UPDATE balances SET amount = amount + (SELECT amount FROM payments WHERE id = <id>)
+    WHERE poolid = '<POOL_ID>' AND address = (SELECT address FROM payments WHERE id = <id>);
+  DELETE FROM payments WHERE id = <id>;
+  ```
+
 ### Environment variables
 
 Without a config file, the pool is configured from these variables. Only the first two are required.
@@ -207,7 +227,7 @@ hashwarp -P stratum2+tcp://<LAX_ADDRESS>.<worker>@<pool-host>:4073
 |---|---|
 | `GET /api/pools` | All pools with network and pool stats |
 | `GET /api/pools/{id}/blocks` | Blocks found, with confirmation progress |
-| `GET /api/pools/{id}/payments` | Payouts |
+| `GET /api/pools/{id}/payments` | Payouts, with their status (`sending`, `pending`, `confirmed`) |
 | `POST /api/pools/{id}/miners/{address}/settings` | Sets a miner's payout threshold (`{"settings": {"paymentThreshold": 5}}`), between `MINIMUM_PAYMENT` and 1,000 × `MINIMUM_PAYMENT`. Only accepted from an IP address the miner has recently mined from |
 | `GET /api/pools/{id}/miners/{address}` | Miner balance, hashrate and workers |
 | `ws://<host>:4000/notifications` | Live events: block found, block unlocked, payment, hashrate |

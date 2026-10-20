@@ -19,6 +19,9 @@ public static partial class ModelMapper
     // block status is stored and served in lowercase ("pending", "confirmed", "orphaned")
     private static string MapBlockStatus(BlockStatus status) => status.ToString().ToLower();
 
+    // payment status likewise ("sending", "pending", "confirmed")
+    private static string MapPaymentStatus(PaymentStatus status) => status.ToString().ToLower();
+
     #region Mining -> Model
 
     public static partial Persistence.Model.Share ToModel(this Blockchain.Share share);

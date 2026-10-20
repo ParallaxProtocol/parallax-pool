@@ -28,6 +28,11 @@ public class ParallaxConstants
     public const string BlockTypeBlock = "block";
     public const int MinPayoutPeerCount = 1;
 
+    /// <summary>
+    /// Blocks on top of a payment's transaction before it counts as paid
+    /// </summary>
+    public const int PaymentConfirmations = 6;
+
     public static readonly Regex ValidAddressPattern = new("^0x[0-9a-fA-F]{40}$", RegexOptions.Compiled);
     public static readonly Regex ZeroHashPattern = new("^0?x?0+$", RegexOptions.Compiled);
 

@@ -82,7 +82,8 @@ CREATE TABLE payments
 	address TEXT NOT NULL,
 	amount decimal(28,12) NOT NULL,
 	transactionconfirmationdata TEXT NOT NULL,
-	created TIMESTAMPTZ NOT NULL
+	created TIMESTAMPTZ NOT NULL,
+	status TEXT NOT NULL DEFAULT 'confirmed'
 );
 
 CREATE INDEX IDX_PAYMENTS_POOL_COIN_WALLET on payments(poolid, coin, address);

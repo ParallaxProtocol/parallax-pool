@@ -24,6 +24,11 @@ public class TransactionReceipt
     public string BlockHash { get; set; }
 
     /// <summary>
+    /// 0x1 if the transaction succeeded, 0x0 if it failed
+    /// </summary>
+    public string Status { get; set; }
+
+    /// <summary>
     /// block number where this transaction was in. null when its pending.
     /// </summary>
     [JsonConverter(typeof(HexToIntegralTypeJsonConverter<ulong>))]

@@ -104,7 +104,10 @@ public class PayoutManager : BackgroundService
                 await UpdatePoolBalancesAsync(pool, poolConfig, handler, scheme, ct);
 
                 if(!poolConfig.PaymentProcessing.DirectRewards)
+                {
+                    await handler.ConfirmPaymentsAsync(pool, ct);
                     await PayoutPoolBalancesAsync(pool, poolConfig, handler, ct);
+                }
             }
 
             catch(InvalidOperationException ex)

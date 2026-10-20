@@ -55,15 +55,18 @@ export function PaymentsTable({ payments }: { payments: Payment[] }) {
         <tbody>
           <AnimatePresence initial={false}>
             {payments.map(p => (
-              <m.tr key={`${p.transactionConfirmationData}-${p.address}`} layout="position" transition={SPRING}
+              <m.tr key={`${p.transactionConfirmationData}-${p.address}-${p.created}`} layout="position" transition={SPRING}
                 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`${ROW} tabular-nums`}>
                 <td className={`${TD} text-muted`} title={formatDateTime(p.created)}>{formatAgo(p.created, now)}</td>
                 <td className={`${TD} font-mono text-[13px]`}><Link href={`/miners/${p.address}`} className="no-underline hover:underline">{shortAddress(p.address)}</Link></td>
                 <td className={`${TD} text-right font-medium`}>{formatLax(p.amount)}</td>
                 <td className={`${TD} font-mono text-[13px]`}>
-                  {p.transactionInfoLink
-                    ? <a href={p.transactionInfoLink} target="_blank" rel="noreferrer" className="no-underline hover:underline">{shortAddress(p.transactionConfirmationData)}</a>
-                    : shortAddress(p.transactionConfirmationData)}
+                  {p.status === "sending"
+                    ? <span className="font-sans text-muted">Sending…</span>
+                    : p.transactionInfoLink
+                      ? <a href={p.transactionInfoLink} target="_blank" rel="noreferrer" className="no-underline hover:underline">{shortAddress(p.transactionConfirmationData)}</a>
+                      : shortAddress(p.transactionConfirmationData)}
+                  {p.status === "pending" && <span className="ml-2 font-sans text-xs text-muted" title="Sent, waiting for confirmations">unconfirmed</span>}
                 </td>
               </m.tr>
             ))}

@@ -101,6 +101,8 @@ export interface Payment {
   amount: number;
   transactionConfirmationData: string;
   transactionInfoLink?: string;
+  /** sending: on its way (no transaction yet), pending: sent, not confirmed on-chain yet */
+  status: "sending" | "pending" | "confirmed";
   created: string;
 }
 

@@ -9,7 +9,6 @@ using Miningcore.Persistence;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
-using Newtonsoft.Json;
 using NLog;
 using Polly;
 using Contract = Miningcore.Contracts.Contract;
@@ -100,100 +99,56 @@ public abstract class PayoutHandlerBase
         return blockRewardRemaining;
     }
 
-    protected async Task PersistPaymentsAsync(Balance[] balances, string transactionConfirmation)
+    /// <summary>
+    /// Takes a payment off the balance and records it as being sent, before anything is sent:
+    /// whatever fails after this, the balance can't be paid out twice
+    /// </summary>
+    protected async Task<Payment> ReservePaymentAsync(Balance balance)
     {
-        Contract.RequiresNonNull(balances);
-        Contract.Requires<ArgumentException>(!string.IsNullOrEmpty(transactionConfirmation));
-
         var coin = poolConfig.Template.As<CoinTemplate>();
 
-        try
+        var payment = new Payment
         {
-            await faultPolicy.ExecuteAsync(async () =>
-            {
-                await cf.RunTx(async (con, tx) =>
-                {
-                    foreach(var balance in balances)
-                    {
-                        if(!string.IsNullOrEmpty(transactionConfirmation) && poolConfig.RewardRecipients.All(x => x.Address != balance.Address))
-                        {
-                            // record payment
-                            var payment = new Payment
-                            {
-                                PoolId = poolConfig.Id,
-                                Coin = coin.Symbol,
-                                Address = balance.Address,
-                                Amount = balance.Amount,
-                                Created = clock.Now,
-                                TransactionConfirmationData = transactionConfirmation
-                            };
+            PoolId = poolConfig.Id,
+            Coin = coin.Symbol,
+            Address = balance.Address,
+            Amount = balance.Amount,
+            Created = clock.Now,
+            TransactionConfirmationData = string.Empty,
+            Status = PaymentStatus.Sending
+        };
 
-                            await paymentRepo.InsertAsync(con, tx, payment);
-                        }
+        var id = 0L;
 
-                        // reset balance
-                        logger.Info(() => $"[{LogCategory}] Resetting balance of {balance.Address}");
-                        await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, balance.Address, -balance.Amount, "Balance reset after payment");
-                    }
-                });
-            });
-        }
-
-        catch(Exception ex)
+        await faultPolicy.ExecuteAsync(() => cf.RunTx(async (con, tx) =>
         {
-            logger.Error(ex, () => $"[{LogCategory}] Failed to persist the following payments: " +
-                $"{JsonConvert.SerializeObject(balances.Where(x => x.Amount > 0).ToDictionary(x => x.Address, x => x.Amount))}");
-            throw;
-        }
+            id = await paymentRepo.InsertAsync(con, tx, payment);
+
+            logger.Info(() => $"[{LogCategory}] Resetting balance of {balance.Address}");
+            await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, balance.Address, -balance.Amount, "Balance reset after payment");
+        }));
+
+        return payment with { Id = id };
     }
 
-    protected async Task PersistPaymentsAsync(Dictionary<Balance, string> balances)
+    protected Task UpdatePaymentStatusAsync(Payment payment, PaymentStatus status, string transactionConfirmation)
     {
-        Contract.RequiresNonNull(balances);
-        Contract.Requires<ArgumentException>(balances.Count > 0);
+        return faultPolicy.ExecuteAsync(() => cf.RunTx((con, tx) =>
+            paymentRepo.UpdateStatusAsync(con, tx, payment.Id, status, transactionConfirmation)));
+    }
 
-        var coin = poolConfig.Template.As<CoinTemplate>();
+    /// <summary>
+    /// Puts a payment that certainly did not reach its recipient back on the balance
+    /// </summary>
+    protected Task RefundPaymentAsync(Payment payment, string usage)
+    {
+        logger.Info(() => $"[{LogCategory}] Refunding {FormatAmount(payment.Amount)} to the balance of {payment.Address}");
 
-        try
+        return faultPolicy.ExecuteAsync(() => cf.RunTx(async (con, tx) =>
         {
-            await faultPolicy.ExecuteAsync(async () =>
-            {
-                await cf.RunTx(async (con, tx) =>
-                {
-                    foreach(var kvp in balances)
-                    {
-                        var (balance, transactionConfirmation) = kvp;
-
-                        if(!string.IsNullOrEmpty(transactionConfirmation) && poolConfig.RewardRecipients.All(x => x.Address != balance.Address))
-                        {
-                            // record payment
-                            var payment = new Payment
-                            {
-                                PoolId = poolConfig.Id,
-                                Coin = coin.Symbol,
-                                Address = balance.Address,
-                                Amount = balance.Amount,
-                                Created = clock.Now,
-                                TransactionConfirmationData = transactionConfirmation
-                            };
-
-                            await paymentRepo.InsertAsync(con, tx, payment);
-                        }
-
-                        // reset balance
-                        logger.Info(() => $"[{LogCategory}] Resetting balance of {balance.Address}");
-                        await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, balance.Address, -balance.Amount, "Balance reset after payment");
-                    }
-                });
-            });
-        }
-
-        catch(Exception ex)
-        {
-            logger.Error(ex, () => $"[{LogCategory}] Failed to persist the following payments: " +
-                $"{JsonConvert.SerializeObject(balances.Where(x => x.Key.Amount > 0).ToDictionary(x => x.Key.Address, x => x.Key.Amount))}");
-            throw;
-        }
+            await paymentRepo.DeleteAsync(con, tx, payment.Id);
+            await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, payment.Address, payment.Amount, usage);
+        }));
     }
 
     public virtual double AdjustShareDifficulty(double difficulty)

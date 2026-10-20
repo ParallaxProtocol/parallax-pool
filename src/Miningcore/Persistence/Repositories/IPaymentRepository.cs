@@ -6,7 +6,10 @@ namespace Miningcore.Persistence.Repositories;
 
 public interface IPaymentRepository
 {
-    Task InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment);
+    Task<long> InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment);
+    Task<Payment[]> GetPaymentsByStatusAsync(IDbConnection con, string poolId, params PaymentStatus[] status);
+    Task UpdateStatusAsync(IDbConnection con, IDbTransaction tx, long id, PaymentStatus status, string transactionConfirmationData);
+    Task DeleteAsync(IDbConnection con, IDbTransaction tx, long id);
     Task BatchInsertAsync(IDbConnection con, IDbTransaction tx, IEnumerable<Payment> shares);
 
     Task<Payment[]> PagePaymentsAsync(IDbConnection con, string poolId, string address, int page, int pageSize, CancellationToken ct);

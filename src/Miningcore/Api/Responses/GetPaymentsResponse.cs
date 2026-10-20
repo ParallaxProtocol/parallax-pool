@@ -8,5 +8,10 @@ public class Payment
     public decimal Amount { get; set; }
     public string TransactionConfirmationData { get; set; }
     public string TransactionInfoLink { get; set; }
+
+    /// <summary>
+    /// sending, pending (sent, not mined yet) or confirmed
+    /// </summary>
+    public string Status { get; set; }
     public DateTime Created { get; set; }
 }

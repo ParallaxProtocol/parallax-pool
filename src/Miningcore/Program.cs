@@ -795,7 +795,8 @@ public class Program : BackgroundService
     }
 
     /// <summary>
-    /// Waits for the database to accept connections and creates the schema on first start
+    /// Waits for the database to accept connections, creates the schema on first start and
+    /// brings an existing one up to date
     /// </summary>
     private static async Task EnsurePostgresSchemaAsync(IServiceProvider services)
     {
@@ -813,7 +814,11 @@ public class Program : BackgroundService
                 var exists = await cf.Run(async con => await con.ExecuteScalarAsync<string>("SELECT to_regclass('shares')::text")) != null;
 
                 if(exists)
+                {
+                    // databases created before payments had a status: everything in them was sent and assumed paid
+                    await cf.Run(async con => await con.ExecuteAsync("ALTER TABLE payments ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'confirmed'"));
                     return;
+                }
 
                 logger.Info(() => $"Creating database schema in {pg.Database}");
 

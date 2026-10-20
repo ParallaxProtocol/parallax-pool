@@ -12,6 +12,11 @@ public interface IPayoutHandler
     Task<Block[]> ClassifyBlocksAsync(IMiningPool pool, Block[] blocks, CancellationToken ct);
     Task<decimal> UpdateBlockRewardBalancesAsync(IDbConnection con, IDbTransaction tx, IMiningPool pool, Block block, CancellationToken ct);
     Task PayoutAsync(IMiningPool pool, Balance[] balances, CancellationToken ct);
+
+    /// <summary>
+    /// Follows payments that were sent until their transactions are mined (or failed)
+    /// </summary>
+    Task ConfirmPaymentsAsync(IMiningPool pool, CancellationToken ct);
     double AdjustShareDifficulty(double difficulty);
     double AdjustBlockEffort(double effort);
 

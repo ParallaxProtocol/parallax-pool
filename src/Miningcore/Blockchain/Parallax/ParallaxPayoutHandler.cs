@@ -17,6 +17,7 @@ using Miningcore.Rpc;
 using Miningcore.Time;
 using Miningcore.Util;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Block = Miningcore.Persistence.Model.Block;
 using Contract = Miningcore.Contracts.Contract;
 using DaemonResponses = Miningcore.Blockchain.Parallax.DaemonResponses;
@@ -269,6 +270,33 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
             previousAddresses.Any(x => string.Equals(miner, x, StringComparison.OrdinalIgnoreCase));
     }
 
+    public enum PaymentCheck
+    {
+        Waiting,
+        Confirmed,
+        Failed
+    }
+
+    // a payment not mined after this long is worth a warning in the log
+    private static readonly TimeSpan PaymentOverdue = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// What a payment transaction's receipt (null if not mined yet) says, once it has enough confirmations
+    /// </summary>
+    internal static PaymentCheck CheckPayment(TransactionReceipt receipt, ulong latestBlockHeight)
+    {
+        // not mined, or not deep enough yet to be safe from a reorg
+        if(receipt == null || latestBlockHeight < receipt.BlockNumber + ParallaxConstants.PaymentConfirmations)
+            return PaymentCheck.Waiting;
+
+        return receipt.Status switch
+        {
+            "0x1" => PaymentCheck.Confirmed,
+            "0x0" => PaymentCheck.Failed,
+            _ => PaymentCheck.Waiting
+        };
+    }
+
     /// <summary>
     /// Whether the pool's record of a block is the block on the chain at its height, by nonce.
     /// Null for records that predate storing the nonce.
@@ -361,6 +389,10 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
 
     private async Task<string> PayoutAsync(Balance balance, CancellationToken ct)
     {
+        // take the amount off the balance first: if anything below fails half-way, a miner can
+        // end up waiting for a payment, but is never paid twice
+        var payment = await ReservePaymentAsync(balance);
+
         // send transaction
         logger.Info(() => $"[{LogCategory}] Sending {FormatAmount(balance.Amount)} to {balance.Address}");
 
@@ -377,19 +409,103 @@ public class ParallaxPayoutHandler : PayoutHandlerBase,
 
         var response = await rpcClient.ExecuteAsync<string>(logger, coin.RpcMethodPrefix + EC.SendTx, ct, new[] { request });
 
-        if(response.Error != null)
-            throw new Exception($"{coin.RpcMethodPrefix}{EC.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
+        // the node turned it down, so nothing was sent
+        if(response.Error != null && response.Error.Code != RpcClient.NoResponseErrorCode)
+        {
+            await RefundPaymentAsync(payment, $"Refund of payment {payment.Id}, not sent: {response.Error.Message}");
 
-        if(string.IsNullOrEmpty(response.Response) || ParallaxConstants.ZeroHashPattern.IsMatch(response.Response))
-            throw new Exception($"{coin.RpcMethodPrefix}{EC.SendTx} did not return a valid transaction hash");
+            throw new Exception($"{coin.RpcMethodPrefix}{EC.SendTx} returned error: {response.Error.Message} code {response.Error.Code}");
+        }
+
+        // no usable answer: the transaction may or may not be out there, so the payment stays
+        // "sending" for the operator to check rather than risk sending it again
+        if(response.Error != null || string.IsNullOrEmpty(response.Response) || ParallaxConstants.ZeroHashPattern.IsMatch(response.Response))
+        {
+            var error = response.Error?.Message ?? $"no transaction hash ({response.Response})";
+
+            throw new Exception($"Payment {payment.Id} of {FormatAmount(balance.Amount)} to {balance.Address} may or may not have been sent " +
+                $"({coin.RpcMethodPrefix}{EC.SendTx}: {error}). It stays 'sending' until checked by hand");
+        }
 
         var txHash = response.Response;
         logger.Info(() => $"[{LogCategory}] Payment transaction id: {txHash}");
 
-        // update db
-        await PersistPaymentsAsync(new[] { balance }, txHash);
+        try
+        {
+            await UpdatePaymentStatusAsync(payment, PaymentStatus.Pending, txHash);
+        }
 
-        // done
+        catch(Exception ex)
+        {
+            throw new Exception($"Payment {payment.Id} was sent in transaction {txHash} but could not be recorded: {ex.Message}", ex);
+        }
+
         return txHash;
+    }
+
+    public async Task ConfirmPaymentsAsync(IMiningPool pool, CancellationToken ct)
+    {
+        var payments = await cf.Run(con => paymentRepo.GetPaymentsByStatusAsync(con, poolConfig.Id, PaymentStatus.Sending, PaymentStatus.Pending));
+
+        foreach(var payment in payments.Where(x => x.Status == PaymentStatus.Sending))
+        {
+            logger.Warn(() => $"[{LogCategory}] Payment {payment.Id} of {FormatAmount(payment.Amount)} to {payment.Address} from {payment.Created:u} " +
+                "may or may not have been sent. Look for it on the node and resolve it by hand (see the README)");
+        }
+
+        var pending = payments.Where(x => x.Status == PaymentStatus.Pending).ToArray();
+
+        if(pending.Length == 0)
+            return;
+
+        var latestBlockResponse = await rpcClient.ExecuteAsync<DaemonResponses.Block>(logger, coin.RpcMethodPrefix + EC.GetBlockByNumber, ct, new[] { (object) "latest", true });
+
+        if(latestBlockResponse.Error != null || latestBlockResponse.Response?.Height == null)
+        {
+            logger.Warn(() => $"[{LogCategory}] Unable to check payments: {latestBlockResponse.Error?.Message ?? "no latest block"}");
+            return;
+        }
+
+        var latestBlockHeight = latestBlockResponse.Response.Height.Value;
+
+        var receipts = await rpcClient.ExecuteBatchAsync(logger, ct, pending
+            .Select(x => new RpcRequest(coin.RpcMethodPrefix + EC.GetTxReceipt, new[] { x.TransactionConfirmationData }))
+            .ToArray());
+
+        for(var i = 0; i < pending.Length; i++)
+        {
+            var payment = pending[i];
+            var txHash = payment.TransactionConfirmationData;
+
+            if(receipts[i].Error != null)
+            {
+                logger.Warn(() => $"[{LogCategory}] Unable to check payment transaction {txHash}: {receipts[i].Error.Message}");
+                continue;
+            }
+
+            // null until the transaction is mined
+            var receipt = receipts[i].Response is { Type: not JTokenType.Null } token ? token.ToObject<TransactionReceipt>() : null;
+
+            switch(CheckPayment(receipt, latestBlockHeight))
+            {
+                case PaymentCheck.Confirmed:
+                    logger.Info(() => $"[{LogCategory}] Payment transaction {txHash} confirmed in block {receipt.BlockNumber}");
+
+                    await UpdatePaymentStatusAsync(payment, PaymentStatus.Confirmed, txHash);
+                    break;
+
+                case PaymentCheck.Failed:
+                    logger.Warn(() => $"[{LogCategory}] Payment transaction {txHash} failed in block {receipt.BlockNumber}");
+
+                    await RefundPaymentAsync(payment, $"Refund of failed payment {txHash}");
+                    NotifyPayoutFailure(poolConfig.Id, new[] { new Balance { PoolId = payment.PoolId, Address = payment.Address, Amount = payment.Amount } },
+                        $"Payment transaction {txHash} failed, the amount is back on the balance", null);
+                    break;
+
+                case PaymentCheck.Waiting when receipt == null && clock.Now - payment.Created > PaymentOverdue:
+                    logger.Warn(() => $"[{LogCategory}] Payment transaction {txHash} from {payment.Created:u} is still not mined");
+                    break;
+            }
+        }
     }
 }

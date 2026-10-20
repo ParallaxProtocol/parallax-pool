@@ -11,14 +11,40 @@ namespace Miningcore.Persistence.Postgres.Repositories;
 
 public class PaymentRepository : IPaymentRepository
 {
-    public async Task InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment)
+    public async Task<long> InsertAsync(IDbConnection con, IDbTransaction tx, Payment payment)
     {
         var mapped = payment.ToEntity();
 
-        const string query = @"INSERT INTO payments(poolid, coin, address, amount, transactionconfirmationdata, created)
-            VALUES(@poolid, @coin, @address, @amount, @transactionconfirmationdata, @created)";
+        const string query = @"INSERT INTO payments(poolid, coin, address, amount, transactionconfirmationdata, created, status)
+            VALUES(@poolid, @coin, @address, @amount, @transactionconfirmationdata, @created, @status)
+            RETURNING id";
 
-        await con.ExecuteAsync(query, mapped, tx);
+        return await con.ExecuteScalarAsync<long>(query, mapped, tx);
+    }
+
+    public async Task<Payment[]> GetPaymentsByStatusAsync(IDbConnection con, string poolId, params PaymentStatus[] status)
+    {
+        const string query = "SELECT * FROM payments WHERE poolid = @poolId AND status = ANY(@status) ORDER BY created";
+
+        return (await con.QueryAsync<Entities.Payment>(query, new
+            {
+                poolId,
+                status = status.Select(x => x.ToString().ToLower()).ToArray()
+            }))
+            .Select(x => x.ToModel())
+            .ToArray();
+    }
+
+    public Task UpdateStatusAsync(IDbConnection con, IDbTransaction tx, long id, PaymentStatus status, string transactionConfirmationData)
+    {
+        const string query = "UPDATE payments SET status = @status, transactionconfirmationdata = @transactionConfirmationData WHERE id = @id";
+
+        return con.ExecuteAsync(query, new { id, status = status.ToString().ToLower(), transactionConfirmationData }, tx);
+    }
+
+    public Task DeleteAsync(IDbConnection con, IDbTransaction tx, long id)
+    {
+        return con.ExecuteAsync("DELETE FROM payments WHERE id = @id", new { id }, tx);
     }
 
     public async Task BatchInsertAsync(IDbConnection con, IDbTransaction tx, IEnumerable<Payment> payments)
@@ -28,7 +54,7 @@ public class PaymentRepository : IPaymentRepository
 
         var pgCon = (NpgsqlConnection) con;
 
-        const string query = @"COPY payments (poolid, coin, address, amount, transactionconfirmationdata, created) FROM STDIN (FORMAT BINARY)";
+        const string query = @"COPY payments (poolid, coin, address, amount, transactionconfirmationdata, created, status) FROM STDIN (FORMAT BINARY)";
 
         await using(var writer = await pgCon.BeginBinaryImportAsync(query))
         {
@@ -42,6 +68,7 @@ public class PaymentRepository : IPaymentRepository
                 await writer.WriteAsync(payment.Amount, NpgsqlDbType.Numeric);
                 await writer.WriteAsync(payment.TransactionConfirmationData);
                 await writer.WriteAsync(payment.Created, NpgsqlDbType.Timestamp);
+                await writer.WriteAsync(payment.Status.ToString().ToLower());
             }
 
             await writer.CompleteAsync();
