@@ -117,8 +117,9 @@ function Shell() {
     <div className="relative isolate flex min-h-dvh flex-col overflow-x-clip">
       <header className="sticky top-0 z-20 border-b border-border bg-header backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center gap-x-7 gap-y-3 px-4 pt-3 sm:px-6 lg:min-h-16 lg:pt-0">
-          <Link href="/" className="flex items-center gap-2.5 text-base font-semibold tracking-[-0.01em] no-underline">
-            <img src="/logo.svg" alt="" className="size-[26px]" />
+          {/* The main site's mark and name, at its header's size: a 32px mark, the name at 30px */}
+          <Link href="/" className="flex items-center gap-3 text-[30px] leading-none font-medium tracking-[-0.04em] no-underline">
+            <img src="/logo.svg" alt="" className="size-8" />
             Parallax Pool
           </Link>
 
